@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 from textual.app import ComposeResult
@@ -37,13 +38,17 @@ class AddModScreen(Screen):
             yield LoadingIndicator(id="loading")
             yield DataTable(id="avail-mod-table", cursor_type="row")
             yield Label("", id="help-text")
+            yield Label("", id="error-text")
             with Horizontal():
-                yield Button("Add Selected Mod (Enter)", id="add-mod-btn", variant="primary")
-                yield Button("Back (Esc)", id="back-btn", variant="default")
+                yield Button("Add Selected Mod", id="add-mod-btn", variant="primary")
+                yield Button("Retry", id="retry-btn", variant="default")
+                yield Button("Back", id="back-btn", variant="default")
 
     async def on_mount(self) -> None:
         self.query_one("#avail-mod-table", DataTable).display = False
         self.query_one("#loading", LoadingIndicator).display = True
+        self.query_one("#retry-btn", Button).display = False
+        self.query_one("#error-text", Label).display = False
         self.query_one("#help-text", Label).update("Click a mod, then press Enter or click Add Selected Mod")
         await self._fetch_mods()
 
@@ -65,19 +70,44 @@ class AddModScreen(Screen):
             unadded = self.app.mod_service.get_unadded_mods()
             self._repo_data = unadded
             self.query_one("#loading", LoadingIndicator).display = False
+            self.query_one("#retry-btn", Button).display = False
+            self.query_one("#error-text", Label).display = False
             table.display = True
             table.clear()
             for entry in unadded.mod_datas:
                 patches = ", ".join(entry.mod_patches) if entry.mod_patches else ""
                 addons = ", ".join(entry.mod_addons) if entry.mod_addons else ""
                 table.add_row(entry.mod_name, patches, addons)
+            count = len(unadded.mod_datas)
+            self.query_one("#add-mod-title", Label).update(f"Available Mods ({count})")
             if unadded.mod_datas:
                 table.move_cursor(row=0)
+            else:
+                self.query_one("#help-text", Label).update("All mods have been added!")
         except Exception as e:
             logger.exception("Failed to fetch mods")
             self.query_one("#loading", LoadingIndicator).display = False
-            self.query_one("#add-mod-title", Label).update(f"Available Mods - Error: {e}")
-            self.notify(f"Failed to fetch mods: {e}", severity="error")
+            self.query_one("#retry-btn", Button).display = True
+            self.query_one("#error-text", Label).update(f"[red]Failed to fetch mods: {e}[/]")
+            self.query_one("#error-text", Label).display = True
+            self.query_one("#add-mod-title", Label).update("Available Mods")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "add-mod-btn":
+            self._add_current_mod()
+        elif event.button.id == "retry-btn":
+            asyncio.ensure_future(self._retry_fetch())
+        elif event.button.id == "back-btn":
+            self.action_back()
+
+    async def _retry_fetch(self) -> None:
+        self.query_one("#retry-btn", Button).display = False
+        self.query_one("#error-text", Label).display = False
+        self.query_one("#loading", LoadingIndicator).display = True
+        await self._fetch_mods()
+
+    def action_back(self) -> None:
+        self.app.pop_screen()
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         self._add_current_mod()
@@ -101,15 +131,6 @@ class AddModScreen(Screen):
         else:
             self.highlighted_mod = None
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "add-mod-btn":
-            self._add_current_mod()
-        elif event.button.id == "back-btn":
-            self.action_back()
-
-    def action_back(self) -> None:
-        self.app.pop_screen()
-
     def _add_current_mod(self) -> None:
         if self.highlighted_mod is None:
             self.notify("No mod selected", severity="warning")
@@ -131,6 +152,8 @@ class AddModScreen(Screen):
             patches = ", ".join(e.mod_patches) if e.mod_patches else ""
             addons = ", ".join(e.mod_addons) if e.mod_addons else ""
             table.add_row(e.mod_name, patches, addons)
+        count = len(unadded.mod_datas)
+        self.query_one("#add-mod-title", Label).update(f"Available Mods ({count})")
         if unadded.mod_datas:
             table.move_cursor(row=0)
         else:

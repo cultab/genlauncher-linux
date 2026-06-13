@@ -3,7 +3,7 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Label, Static, Header, Footer
+from textual.widgets import Button, Label, Header, Footer
 
 
 class CreditsScreen(Screen):
@@ -24,6 +24,7 @@ class CreditsScreen(Screen):
             yield Label("")
             yield Label("Discord: https://discord.gg/FaVvdzQ")
         yield Button("Back", id="back-btn", variant="default")
+        yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "back-btn":

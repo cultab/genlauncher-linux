@@ -2,20 +2,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
-
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.screen import Screen
 from textual.timer import Timer
-from textual.widgets import DataTable, Label, Button, Header, Footer, Static, ProgressBar
+from textual.widgets import DataTable, Label, Button, ProgressBar, Static
 
-from genlauncher_tui.models.enums import InstallMethod
-from genlauncher_tui.models.mod import Mod, standard_mod_name
+from genlauncher_tui.models.mod import Mod
 from genlauncher_tui.models.options import InstallationStatus
-from genlauncher_tui.services.steam_service import SteamService
+from genlauncher_tui.widgets.action_panel import ModActionPanel
+from genlauncher_tui.widgets.key_hints import KeyHints
+from genlauncher_tui.widgets.status_panel import StatusPanel
 
 
 logger = logging.getLogger(__name__)
@@ -44,16 +43,10 @@ class HomeScreen(Screen):
         with Horizontal():
             with Vertical(classes="left-panel"):
                 yield DataTable(id="mod-table", cursor_type="row")
-                yield Label("Select a mod row for actions", id="hint-text", classes="status-label")
-                with Vertical(id="mod-actions"):
-                    yield Label(id="action-mod-name", classes="status-label")
-                    yield Button("Download", id="act-download", variant="primary")
-                    yield Button("Install", id="act-install", variant="primary")
-                    yield Button("Uninstall", id="act-uninstall", variant="default")
-                    yield Button("Delete Files", id="act-delete", variant="warning")
-                    yield Button("Remove", id="act-remove", variant="error")
+                yield Label("Select a mod row for actions", id="hint-text")
+                yield ModActionPanel(id="mod-actions")
             with Vertical(classes="right-panel"):
-                yield Label("Actions", classes="status-label")
+                yield Label("Quick Actions", classes="section-header")
                 yield Button("Launch Game", id="launch-btn", variant="primary")
                 yield Button("Add Mods", id="add-mod-btn")
                 yield Button("Options", id="options-btn")
@@ -61,19 +54,12 @@ class HomeScreen(Screen):
                 yield Button("Credits", id="credits-btn")
                 yield Button("Exit", id="exit-btn", variant="error")
                 yield ProgressBar(id="download-progress", show_eta=False, show_percentage=True, classes="download-progress")
-                yield Static("", classes="status-row")
-                yield Label("Status", classes="status-label")
-                yield Label("", id="gen-tool-status")
-                yield Label("", id="modded-launcher-status")
-                yield Label("", id="steam-path-label", classes="status-label")
-                yield Static("", classes="status-row")
-                yield Label("Keys", classes="status-label")
-                yield Label("[b]a[/] Add Mods", id="key-a")
-                yield Label("[b]o[/] Options", id="key-o")
-                yield Label("[b]c[/] Credits", id="key-c")
-                yield Label("[b]l[/] Launch Game", id="key-l")
-                yield Label("[b]F1[/]/[b]?[/] Help", id="key-help")
-                yield Label("[b]Esc[/] Home", id="key-esc")
+                yield Static("", classes="separator")
+                yield StatusPanel(id="status-panel")
+                yield Static("", classes="separator")
+                yield KeyHints(self, id="key-hints")
+        with Horizontal(id="bottom-status-bar"):
+            yield Label("", id="bottom-progress-label")
 
     def on_mount(self) -> None:
         table = self.query_one("#mod-table", DataTable)
@@ -125,18 +111,7 @@ class HomeScreen(Screen):
     def _refresh_status(self):
         app = self.app
         self.install_status = app.mod_service.get_installation_status()
-        gt = self.query_one("#gen-tool-status", Label)
-        ml = self.query_one("#modded-launcher-status", Label)
-        sp = self.query_one("#steam-path-label", Label)
-        status = self.install_status
-        gt.update(f"GenTool: {'[green]OK[/]' if status.gen_tool else '[red]Not installed[/]'}")
-        ml.update(f"Modded Launcher: {'[green]OK[/]' if status.modded_launcher else '[red]Not installed[/]'}")
-        try:
-            path = SteamService.get_game_install_dir()
-            sp.update(f"Game: {path}")
-        except Exception:
-            logger.warning("Could not determine game install path", exc_info=True)
-            sp.update("Game: Not found")
+        self.query_one("#status-panel", StatusPanel).refresh_status(self.install_status)
 
     def _poll_status(self) -> None:
         self._refresh_status()
@@ -144,6 +119,7 @@ class HomeScreen(Screen):
 
     def _refresh_download_progress(self):
         pb = self.query_one("#download-progress", ProgressBar)
+        bp = self.query_one("#bottom-progress-label", Label)
         downloading_mod = None
         for mod in self.added_mods:
             if mod.downloading:
@@ -155,12 +131,17 @@ class HomeScreen(Screen):
                 pb.total = prog.total_download_size
                 pb.progress = prog.downloaded_size
                 pb.display = True
+                pct = (prog.downloaded_size / prog.total_download_size) * 100
+                bp.update(f"Downloading: {downloading_mod.mod_info.mod_name} ({pct:.0f}%)")
                 if prog.downloaded:
                     pb.display = False
+                    bp.update("")
             else:
                 pb.display = False
+                bp.update("")
         else:
             pb.display = False
+            bp.update("")
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         table = self.query_one("#mod-table", DataTable)
@@ -177,18 +158,13 @@ class HomeScreen(Screen):
             self.selected_mod = self.added_mods[idx]
 
     def watch_selected_mod(self, mod: Mod | None) -> None:
-        container = self.query_one("#mod-actions", Vertical)
-        if mod is None:
-            container.display = False
-            return
-        container.display = True
-        name = mod.mod_info.mod_name if mod.mod_info else "?"
-        self.query_one("#action-mod-name", Label).update(f"[b]{name}[/]")
-        self.query_one("#act-download", Button).display = not mod.downloaded and not mod.installed
-        self.query_one("#act-install", Button).display = mod.downloaded and not mod.installed
-        self.query_one("#act-uninstall", Button).display = mod.installed
-        self.query_one("#act-delete", Button).display = mod.downloaded and not mod.installed
-        self.query_one("#act-remove", Button).display = not mod.installed
+        action_panel = self.query_one("#mod-actions", ModActionPanel)
+        hint = self.query_one("#hint-text", Label)
+        action_panel.show_for_mod(mod)
+        if mod is not None:
+            hint.display = False
+        else:
+            hint.display = True
 
     async def _action_wrapper(self, action_fn):
         try:

@@ -108,14 +108,15 @@ async def test_add_mod_flow_keyboard():
 
         # Should show mods
         unadded = app.mod_service.get_unadded_mods()
-        assert len(unadded.mod_datas) > 0, "Expected mods to be fetched"
-        initial_count = len(unadded.mod_datas)
+        datas = unadded.mod_datas or []
+        assert len(datas) > 0, "Expected mods to be fetched"
+        initial_count = len(datas)
 
         # Press Enter to add the first highlighted mod
         await pilot.press("enter")
         await pilot.pause()
 
-        remaining = len(app.mod_service.get_unadded_mods().mod_datas)
+        remaining = len(app.mod_service.get_unadded_mods().mod_datas or [])
         assert remaining == initial_count - 1, f"Expected {initial_count - 1} remaining, got {remaining}"
 
 
@@ -127,13 +128,14 @@ async def test_add_mod_flow_button():
         await pilot.press("a")
         await pilot.pause(2)
 
-        initial_count = len(app.mod_service.get_unadded_mods().mod_datas)
+        datas = app.mod_service.get_unadded_mods().mod_datas or []
+        initial_count = len(datas)
 
         # Click the Add Selected Mod button
         await pilot.click("#add-mod-btn")
         await pilot.pause()
 
-        remaining = len(app.mod_service.get_unadded_mods().mod_datas)
+        remaining = len(app.mod_service.get_unadded_mods().mod_datas or [])
         assert remaining == initial_count - 1, f"Expected {initial_count - 1} remaining, got {remaining}"
 
 
@@ -500,3 +502,169 @@ async def test_mod_action_keeps_home_screen():
 
         # Should still be on HomeScreen (no modal)
         assert "Home" in type(app.screen).__name__
+
+
+@pytest.mark.asyncio
+async def test_home_screen_bottom_status_bar():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        bar = app.screen.query_one("#bottom-status-bar")
+        assert bar is not None
+
+
+@pytest.mark.asyncio
+async def test_home_screen_right_panel_section_headers():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        status_panel = app.screen.query_one("#status-panel")
+        assert status_panel is not None
+        assert status_panel.display is True
+
+
+@pytest.mark.asyncio
+async def test_home_screen_has_key_hints():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        key_hints = app.screen.query_one("#key-hints")
+        assert key_hints is not None
+        key_rows = key_hints.query(".key-row")
+        assert len(key_rows) >= 6, f"Expected at least 6 key hints, got {len(key_rows)}"
+
+
+@pytest.mark.asyncio
+async def test_hint_text_hides_when_mod_selected():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+
+        await pilot.press("a")
+        await pilot.pause(2)
+        await pilot.click("#add-mod-btn")
+        await pilot.pause()
+
+        await pilot.press("escape")
+        await pilot.pause()
+
+        # Hint should be visible before selection
+        hint = app.screen.query_one("#hint-text")
+        assert hint.display is True
+
+        # Select the row
+        await pilot.press("enter")
+        await pilot.pause()
+
+        # Hint should hide when mod is selected
+        assert hint.display is False, "Hint should hide when mod is selected"
+
+
+@pytest.mark.asyncio
+async def test_add_mod_screen_has_retry_button():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        await pilot.press("a")
+        await pilot.pause(2)
+        retry_btn = app.screen.query_one("#retry-btn")
+        assert retry_btn is not None
+        assert retry_btn.label == "Retry"
+
+
+@pytest.mark.asyncio
+async def test_add_mod_screen_has_error_text():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        await pilot.press("a")
+        await pilot.pause(2)
+        error_text = app.screen.query_one("#error-text")
+        assert error_text is not None
+
+
+@pytest.mark.asyncio
+async def test_add_mod_screen_shows_mod_count():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        await pilot.press("a")
+        await pilot.pause(2)
+        title = app.screen.query_one("#add-mod-title")
+        title_text = str(title.render())
+        assert "(" in title_text, f"Expected mod count in title, got '{title_text}'"
+        assert ")" in title_text
+
+
+@pytest.mark.asyncio
+async def test_add_mod_button_labels_clean():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        await pilot.press("a")
+        await pilot.pause(2)
+        add_btn = app.screen.query_one("#add-mod-btn")
+        assert add_btn.label == "Add Selected Mod", f"Expected 'Add Selected Mod', got '{add_btn.label}'"
+        back_btn = app.screen.query_one("#back-btn")
+        assert back_btn.label == "Back", f"Expected 'Back', got '{back_btn.label}'"
+
+
+@pytest.mark.asyncio
+async def test_options_screen_has_footer():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        await pilot.press("o")
+        await pilot.pause()
+        footer = app.screen.query_one("Footer")
+        assert footer is not None
+
+
+@pytest.mark.asyncio
+async def test_credits_screen_has_footer():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        await pilot.press("c")
+        await pilot.pause()
+        footer = app.screen.query_one("Footer")
+        assert footer is not None
+
+
+@pytest.mark.asyncio
+async def test_mod_action_panel_widget():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+
+        await pilot.press("a")
+        await pilot.pause(2)
+        await pilot.click("#add-mod-btn")
+        await pilot.pause()
+
+        await pilot.press("escape")
+        await pilot.pause()
+
+        # Before selection, action panel should be hidden
+        from genlauncher_tui.widgets.action_panel import ModActionPanel
+        action_panel = app.screen.query_one("#mod-actions", ModActionPanel)
+        assert action_panel is not None
+        assert action_panel.display is False
+
+        # Select the row
+        await pilot.press("enter")
+        await pilot.pause()
+        assert action_panel.display is True
+
+
+@pytest.mark.asyncio
+async def test_status_panel_widget():
+    app = GenLauncherApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        from genlauncher_tui.widgets.status_panel import StatusPanel
+        sp = app.screen.query_one("#status-panel", StatusPanel)
+        assert sp is not None
+        assert sp.query_one("#gen-tool-status") is not None
+        assert sp.query_one("#modded-launcher-status") is not None
+        assert sp.query_one("#steam-path-label") is not None
