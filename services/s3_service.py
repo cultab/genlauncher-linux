@@ -48,6 +48,14 @@ class S3StorageService:
         return f"https://{host}"
 
     @staticmethod
+    def _build_url(base: str, bucket: str, *segments: str) -> str:
+        parts = []
+        for s in segments:
+            parts.extend(quote(p, safe="") for p in s.split("/"))
+        encoded = "/".join(parts)
+        return f"{base}/{quote(bucket, safe='')}/{encoded}"
+
+    @staticmethod
     def _aws_v4_signed_headers(
         method: str,
         url: str,
@@ -144,7 +152,7 @@ class S3StorageService:
         files = _parse_listing(resp.text)
 
         if not files:
-            listing_url = f"{base}/{bucket}/{folder}/"
+            listing_url = self._build_url(base, bucket, folder, "")
             resp2 = await self._signed_get(listing_url, key, secret)
             resp2.raise_for_status()
             files = _parse_listing(resp2.text)
@@ -161,7 +169,7 @@ class S3StorageService:
         bucket = md.s3_bucket_name or ""
         folder = md.s3_folder_name or ""
         base = self._base_url(host)
-        url = f"{base}/{bucket}/{folder}/{filename}"
+        url = self._build_url(base, bucket, folder, filename)
         resp = await self._signed_get(url, key, secret)
         resp.raise_for_status()
         return resp.content

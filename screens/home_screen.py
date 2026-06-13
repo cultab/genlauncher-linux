@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import subprocess
+import sys
 from typing import Any
 
 from textual.app import App, ComposeResult
@@ -55,6 +57,7 @@ class HomeScreen(Screen):
             with Vertical(classes="right-panel"):
                 yield Label("Actions", classes="status-label")
                 yield Button("Launch Game", id="launch-btn", variant="primary")
+                yield Button("Open Game Folder", id="open-folder-btn")
                 yield Button("Add Mods", id="add-mod-btn")
                 yield Button("Options", id="options-btn")
                 yield Button("Help (F1)", id="help-btn")
@@ -78,10 +81,10 @@ class HomeScreen(Screen):
     def on_mount(self) -> None:
         table = self.query_one("#mod-table", DataTable)
         table.columns.clear()
-        table.add_column("Mod", width=28)
-        table.add_column("Version", width=10)
-        table.add_column("Status", width=12)
-        table.add_column("Size", width=8)
+        table.add_column("Mod", width=None)
+        table.add_column("Version", width=None)
+        table.add_column("Status", width=None)
+        table.add_column("Size", width=None)
         self._refresh_mods()
         self._refresh_status()
         self._poll_task = self.set_interval(2.0, self._poll_status)
@@ -261,6 +264,17 @@ class HomeScreen(Screen):
         if event.button.id == "launch-btn":
             import webbrowser
             webbrowser.open("steam://rungameid/2732960")
+        elif event.button.id == "open-folder-btn":
+            try:
+                path = SteamService.get_game_install_dir()
+                if sys.platform == "win32":
+                    subprocess.run(["explorer", path])
+                elif sys.platform == "darwin":
+                    subprocess.run(["open", path])
+                else:
+                    subprocess.run(["xdg-open", path])
+            except Exception as e:
+                self.notify(f"Failed to open folder: {e}", severity="error")
         elif event.button.id == "add-mod-btn":
             self.app.action_go_add_mod()
         elif event.button.id == "options-btn":

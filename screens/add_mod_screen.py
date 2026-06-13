@@ -54,9 +54,9 @@ class AddModScreen(Screen):
     async def _fetch_mods(self):
         table = self.query_one("#avail-mod-table", DataTable)
         table.columns.clear()
-        table.add_column("Mod", width=35)
-        table.add_column("Patches", width=20)
-        table.add_column("Addons", width=20)
+        table.add_column("Mod", width=None)
+        table.add_column("Patches", width=None)
+        table.add_column("Addons", width=None)
 
         repo = self.app.repo_service
         try:

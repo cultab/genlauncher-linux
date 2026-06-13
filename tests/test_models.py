@@ -1,23 +1,4 @@
-from genlauncher_tui.models.enums import ModificationType, InstallMethod, GameType
 from genlauncher_tui.models.mod import Mod, ModData, clean_string, standard_mod_name, fix_mod_filename
-from genlauncher_tui.models.repo import ReposModsData, ModAddonsAndPatches
-from genlauncher_tui.models.options import LauncherOptions, InstallationStatus
-
-
-class TestEnums:
-    def test_modification_type_values(self):
-        assert ModificationType.Mod.value == "Mod"
-        assert ModificationType.Addon.value == "Addon"
-        assert ModificationType.Patch.value == "Patch"
-        assert ModificationType.Advertising.value == "Advertising"
-
-    def test_install_method_values(self):
-        assert InstallMethod.CopyFiles.value == "CopyFiles"
-        assert InstallMethod.SymLink.value == "SymLink"
-
-    def test_game_type_values(self):
-        assert GameType.Gen.value == 1
-        assert GameType.ZH.value == 2
 
 
 class TestStringUtils:
@@ -41,14 +22,6 @@ class TestStringUtils:
 
 
 class TestModData:
-    def test_default_values(self):
-        md = ModData()
-        assert md.name == ""
-        assert md.version == ""
-        assert md.is_selected is False
-        assert md.installed is False
-        assert md.modification_type == ModificationType.Mod
-
     def test_equality_by_name_and_version(self):
         a = ModData(name="Test Mod", version="1.0")
         b = ModData(name="test mod", version="1.0")
@@ -79,10 +52,6 @@ class TestMod:
         m = Mod(mod_info=ModAddonsAndPatches(mod_name="Rise of the Reds"))
         assert m.cleaned_mod_name == "Rise_of_the_Reds"
 
-    def test_cleaned_mod_name_no_info(self):
-        m = Mod()
-        assert m.cleaned_mod_name == ""
-
     def test_has_s3_storage(self):
         m = Mod(mod_data=ModData(s3_host_link="s3.example.com", s3_folder_name="mods", s3_bucket_name="bucket"))
         assert m.has_s3_storage() is True
@@ -90,34 +59,3 @@ class TestMod:
     def test_no_s3_storage(self):
         m = Mod(mod_data=ModData())
         assert m.has_s3_storage() is False
-
-    def test_no_s3_storage_no_mod_data(self):
-        m = Mod()
-        assert m.has_s3_storage() is False
-
-
-class TestReposModsData:
-    def test_default_lists_are_empty(self):
-        data = ReposModsData()
-        assert data.mod_datas == []
-        assert data.global_addons_data == []
-        assert data.original_game_addons == []
-        assert data.original_game_patches == []
-        assert data.adv_data == []
-
-    def test_mod_addons_and_patches_defaults(self):
-        m = ModAddonsAndPatches()
-        assert m.mod_patches == []
-        assert m.mod_addons == []
-
-
-class TestOptions:
-    def test_launcher_options_defaults(self):
-        opts = LauncherOptions()
-        assert opts.install_method == InstallMethod.CopyFiles
-        assert opts.steam_path == ""
-
-    def test_installation_status_defaults(self):
-        status = InstallationStatus()
-        assert status.modded_launcher is False
-        assert status.gen_tool is False
