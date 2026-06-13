@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta:__legacy__"
+
+[project]
+name = "genlauncher-tui"
+version = "0.1.0"
+description = "Terminal UI mod manager for Command & Conquer: Generals - Zero Hour"
+requires-python = ">=3.10"
+license = {text = "CC0-1.0"}
+authors = [
+    {name = "GenLauncher Contributors"},
+]
+dependencies = [
+    "textual>=1.0.0",
+    "httpx",
+    "pyyaml",
+    "platformdirs",
+]
+
+[project.scripts]
+genlauncher = "genlauncher_tui.__main__:main"
+
+[tool.setuptools]
+packages = [
+    "genlauncher_tui",
+    "genlauncher_tui.models",
+    "genlauncher_tui.services",
+    "genlauncher_tui.screens",
+    "genlauncher_tui.widgets",
+]
+
+[tool.setuptools.package-dir]
+"genlauncher_tui" = "."
