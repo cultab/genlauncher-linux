@@ -147,8 +147,24 @@ OptionsScreen RadioSet {
     margin: 1 0;
 }
 
-.download-progress {
-    margin: 1 1;
+#download-bar {
+    dock: bottom;
+    height: 3;
+    layout: vertical;
+    padding: 0 1;
+    background: $primary 20%;
+    display: none;
+}
+
+#download-progress {
+    width: 100%;
+    margin: 0;
+}
+
+#download-file-label {
+    height: 1;
+    color: $text-muted;
+    text-style: italic;
 }
 
 #bottom-status-bar {

@@ -264,6 +264,7 @@ class ModService:
                     total_size = sum(f.size for f in file_list)
                     self._create_s3_progress(total_size, file_list, cleaned)
                     for f in file_list:
+                        self._download_progress[standard_mod_name(cleaned)].current_file = f.file_name
                         file_path = os.path.join(mod_dir, f.file_name)
                         if os.path.isfile(file_path):
                             if get_md5(file_path) == f.hash.lower():
@@ -297,6 +298,7 @@ class ModService:
                 link = _parse_download_link(dl_link)
                 key = standard_mod_name(cleaned)
                 self._create_simple_progress(mod_name, 0)
+                self._download_progress[key].current_file = os.path.basename(link)
 
                 def _progress(downloaded: int, total: int):
                     p = self._download_progress.get(key)

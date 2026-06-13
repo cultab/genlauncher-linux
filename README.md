@@ -38,6 +38,12 @@ Run `genlauncher` from your terminal.
 - Steam with Command & Conquer: Generals - Zero Hour installed
 - Optional: `pip install .[archive]` for 7z/RAR archive support (py7zr, rarfile)
 
+## Test
+
+```bash
+python -m pytest tests/ -v
+```
+
 ## License
 
 CC0 1.0 Universal (Creative Commons Zero) — see `LICENSE`.

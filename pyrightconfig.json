@@ -1,6 +1,6 @@
 {
     "include": ["."],
-    "exclude": ["tests", "**/__pycache__"],
+    "exclude": ["tests", "**/__pycache__", "build", "*.egg-info"],
     "typeCheckingMode": "basic",
     "reportAttributeAccessIssue": false,
     "reportMissingModuleSource": false,

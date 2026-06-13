@@ -57,11 +57,13 @@ class HomeScreen(Screen):
                 yield Button("Help (F1)", id="help-btn")
                 yield Button("Credits", id="credits-btn")
                 yield Button("Exit", id="exit-btn", variant="error")
-                yield ProgressBar(id="download-progress", show_eta=False, show_percentage=True, classes="download-progress")
                 yield Static("", classes="separator")
                 yield StatusPanel(id="status-panel")
                 yield Static("", classes="separator")
                 yield KeyHints(self, id="key-hints")
+        with Horizontal(id="download-bar"):
+            yield ProgressBar(id="download-progress", show_eta=False, show_percentage=True)
+            yield Label("", id="download-file-label")
         with Horizontal(id="bottom-status-bar"):
             yield Label("", id="bottom-progress-label")
 
@@ -122,7 +124,9 @@ class HomeScreen(Screen):
         self._refresh_download_progress()
 
     def _refresh_download_progress(self):
+        bar = self.query_one("#download-bar")
         pb = self.query_one("#download-progress", ProgressBar)
+        fl = self.query_one("#download-file-label", Label)
         bp = self.query_one("#bottom-progress-label", Label)
         downloading_mod = None
         for mod in self.added_mods:
@@ -131,20 +135,23 @@ class HomeScreen(Screen):
                 break
         if downloading_mod and downloading_mod.mod_info:
             prog = self.app.mod_service.get_download_progress(downloading_mod.mod_info.mod_name)
+            bar.display = True
             if prog.total_download_size > 0:
                 pb.total = prog.total_download_size
                 pb.progress = prog.downloaded_size
-                pb.display = True
                 pct = (prog.downloaded_size / prog.total_download_size) * 100
+                fl.update(prog.current_file or "")
                 bp.update(f"Downloading: {downloading_mod.mod_info.mod_name} ({pct:.0f}%)")
                 if prog.downloaded:
-                    pb.display = False
+                    bar.display = False
+                    fl.update("")
                     bp.update("")
             else:
-                pb.display = False
-                bp.update("")
+                fl.update(prog.current_file or "")
+                bp.update(f"Downloading: {downloading_mod.mod_info.mod_name}")
         else:
-            pb.display = False
+            bar.display = False
+            fl.update("")
             bp.update("")
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:

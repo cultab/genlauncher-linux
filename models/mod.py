@@ -150,6 +150,7 @@ def fix_mod_filename(filename: str) -> str:
 class ModDownloadProgress:
     total_download_size: int = 0
     downloaded_size: int = 0
+    current_file: Optional[str] = None
     file_list: Optional[list[str]] = None
     downloaded_files: Optional[list[str]] = None
     downloaded: bool = False

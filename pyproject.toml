@@ -23,6 +23,7 @@ archive = ["py7zr", "rarfile"]
 
 [project.scripts]
 genlauncher = "genlauncher_tui.__main__:main"
+genlauncher-web = "genlauncher_tui.__web__:main"
 
 [tool.setuptools]
 packages = [
