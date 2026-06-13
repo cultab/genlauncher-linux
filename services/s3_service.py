@@ -61,7 +61,7 @@ class S3StorageService:
         parsed = urlparse(url)
         canonical_uri = parsed.path or "/"
         params = parse_qsl(parsed.query, keep_blank_values=True)
-        canonical_qs = urlencode(sorted(params), quote_via=lambda s, safe, encoding, errors: quote(s, safe="~"))
+        canonical_qs = urlencode(sorted(params), quote_via=lambda s, safe, encoding, errors: quote(s, safe="~"))  # type: ignore[arg-type]
         payload_hash = hashlib.sha256(body).hexdigest()
         amz_date = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         date_stamp = amz_date[:8]

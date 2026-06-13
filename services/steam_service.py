@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from typing import Optional
+
 from genlauncher_tui.models.enums import GameType
 
 ZERO_HOUR_GAME_ID = "2732960"

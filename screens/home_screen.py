@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -200,7 +201,7 @@ class HomeScreen(Screen):
         self._refresh_mods()
 
     async def _do_download(self, mod: Mod):
-        name = mod.mod_info.mod_name
+        name = mod.mod_info.mod_name if mod.mod_info else "?"
         self.notify(f"Downloading {name}...", timeout=2)
         try:
             await self.app.mod_service.download_mod(name)
@@ -211,7 +212,7 @@ class HomeScreen(Screen):
         self._refresh_mods()
 
     async def _do_install(self, mod: Mod):
-        name = mod.mod_info.mod_name
+        name = mod.mod_info.mod_name if mod.mod_info else "?"
         opts = self.app.options_service.get_options()
         try:
             await self.app.mod_service.ensure_gentool_installed(opts.install_method)
@@ -223,7 +224,7 @@ class HomeScreen(Screen):
         self._refresh_mods()
 
     def _do_uninstall(self, mod: Mod):
-        name = mod.mod_info.mod_name
+        name = mod.mod_info.mod_name if mod.mod_info else "?"
         try:
             self.app.mod_service.uninstall_mod(name)
             self.notify(f"{name} uninstalled", severity="information")
@@ -233,7 +234,7 @@ class HomeScreen(Screen):
         self._refresh_mods()
 
     def _do_delete(self, mod: Mod):
-        name = mod.mod_info.mod_name
+        name = mod.mod_info.mod_name if mod.mod_info else "?"
         try:
             self.app.mod_service.delete_mod(name)
             self.notify(f"{name} files deleted", severity="information")
@@ -243,7 +244,7 @@ class HomeScreen(Screen):
         self._refresh_mods()
 
     def _do_remove(self, mod: Mod):
-        name = mod.mod_info.mod_name
+        name = mod.mod_info.mod_name if mod.mod_info else "?"
         try:
             self.app.mod_service.remove_mod_from_list(name)
             self.notify(f"{name} removed", severity="information")

@@ -192,9 +192,11 @@ class ModService:
             return ReposModsData()
         added_names = {m.mod_info.mod_name.lower() for m in self._added_mods if m.mod_info}
         unadded = ReposModsData()
-        for entry in self._repo_data.mod_datas:
+        unadded_datas = unadded.mod_datas
+        assert unadded_datas is not None
+        for entry in (self._repo_data.mod_datas or []):
             if entry.mod_name.lower() not in added_names:
-                unadded.mod_datas.append(entry)
+                unadded_datas.append(entry)
         unadded.global_addons_data = self._repo_data.global_addons_data
         unadded.original_game_addons = self._repo_data.original_game_addons
         unadded.original_game_patches = self._repo_data.original_game_patches
@@ -205,7 +207,7 @@ class ModService:
         if not self._repo_data:
             return False
         match = None
-        for entry in self._repo_data.mod_datas:
+        for entry in (self._repo_data.mod_datas or []):
             if entry.mod_name.strip().lower() == mod_name.strip().lower():
                 match = entry
                 break
@@ -265,7 +267,9 @@ class ModService:
                         file_path = os.path.join(mod_dir, f.file_name)
                         if os.path.isfile(file_path):
                             if get_md5(file_path) == f.hash.lower():
-                                self._download_progress[standard_mod_name(cleaned)].downloaded_files.append(f.file_name)
+                                files_list = self._download_progress[standard_mod_name(cleaned)].downloaded_files
+                                if files_list is not None:
+                                    files_list.append(f.file_name)
                                 self._download_progress[standard_mod_name(cleaned)].downloaded_size += f.size
                                 total_install_size += f.size
                                 continue
@@ -276,7 +280,9 @@ class ModService:
                             fh.write(data)
                         if get_md5(file_path) == f.hash.lower():
                             installed_files.append(f.file_name)
-                            self._download_progress[standard_mod_name(cleaned)].downloaded_files.append(f.file_name)
+                            files_list = self._download_progress[standard_mod_name(cleaned)].downloaded_files
+                            if files_list is not None:
+                                files_list.append(f.file_name)
                             total_install_size += f.size
                             self._download_progress[standard_mod_name(cleaned)].downloaded_size += f.size
                         else:
@@ -286,7 +292,9 @@ class ModService:
                 finally:
                     await s3.close()
             else:
-                link = _parse_download_link(mod.mod_data.simple_download_link)
+                md = mod.mod_data
+                dl_link = (md.simple_download_link or "") if md else ""
+                link = _parse_download_link(dl_link)
                 key = standard_mod_name(cleaned)
                 self._create_simple_progress(mod_name, 0)
 
@@ -360,7 +368,7 @@ class ModService:
         if not mod:
             raise ValueError(f"Mod not found: {mod_name}")
 
-        if any(m.installed and m.mod_info.mod_name != mod_name for m in self._added_mods):
+        if any(m.installed and m.mod_info and m.mod_info.mod_name != mod_name for m in self._added_mods):
             raise RuntimeError("Another mod is already installed. Uninstall it first.")
 
         self._ensure_modded_launcher_installed(install_method)

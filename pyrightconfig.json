@@ -9,5 +9,7 @@
     "reportUnusedVariable": false,
     "reportWildcardImportFromLibrary": false,
     "useLibraryCodeForTypes": false,
-    "extraPaths": [".."]
+    "extraPaths": [".."],
+    "reportMissingImports": "none",
+    "pythonVersion": "3.10"
 }

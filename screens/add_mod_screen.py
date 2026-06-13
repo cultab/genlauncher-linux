@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -96,8 +95,9 @@ class AddModScreen(Screen):
             self.highlighted_mod = None
             return
         idx = list(rows.keys()).index(row_key)
-        if idx < len(self._repo_data.mod_datas):
-            self.highlighted_mod = self._repo_data.mod_datas[idx]
+        mod_datas = self._repo_data.mod_datas or []
+        if idx < len(mod_datas):
+            self.highlighted_mod = mod_datas[idx]
         else:
             self.highlighted_mod = None
 

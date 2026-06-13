@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Optional
 
 from platformdirs import user_config_dir
 
@@ -95,6 +94,8 @@ class OptionsService:
     def get_options(self) -> LauncherOptions:
         if self._options is None:
             self._read_options()
+            if self._options is None:
+                self._options = self._default_settings()
         return self._options
 
     def set_options(self, opts: LauncherOptions) -> LauncherOptions:

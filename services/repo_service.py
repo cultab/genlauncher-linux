@@ -39,17 +39,20 @@ class RepoService:
                 mod_patches=entry.get("ModPatches", []),
                 mod_addons=entry.get("ModAddons", []),
             )
-            data.mod_datas.append(m)
+            if data.mod_datas is not None:
+                data.mod_datas.append(m)
         data.global_addons_data = raw.get("globalAddonsData", [])
         data.original_game_addons = raw.get("originalGameAddons", [])
         data.original_game_patches = raw.get("originalGamePatches", [])
         for adv in raw.get("AdvData", []):
             from genlauncher_tui.models.repo import AdvertisingData
-            data.adv_data.append(AdvertisingData(
-                mod_name=adv.get("ModName", ""),
-                mod_link=adv.get("ModLink", ""),
-                images_data=adv.get("ImagesData", []),
-            ))
-        data.mod_datas.sort(key=lambda x: x.mod_name or "")
+            if data.adv_data is not None:
+                data.adv_data.append(AdvertisingData(
+                    mod_name=adv.get("ModName", ""),
+                    mod_link=adv.get("ModLink", ""),
+                    images_data=adv.get("ImagesData", []),
+                ))
+        if data.mod_datas is not None:
+            data.mod_datas.sort(key=lambda x: x.mod_name or "")
         self._cache = data
         return data
