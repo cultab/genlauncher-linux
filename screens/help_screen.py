@@ -12,55 +12,6 @@ class HelpScreen(ModalScreen):
         Binding("escape", "dismiss_help", "Close"),
     ]
 
-    CSS = """
-    HelpScreen {
-        align: center middle;
-    }
-
-    #help-dialog {
-        width: 58;
-        height: auto;
-        padding: 1 2;
-        border: thick $primary;
-        background: $surface;
-    }
-
-    #help-dialog Label {
-        margin: 0 0;
-    }
-
-    #help-dialog .header {
-        text-style: bold;
-        color: $primary;
-        padding-bottom: 1;
-    }
-
-    #help-dialog .section {
-        text-style: bold;
-        margin-top: 1;
-    }
-
-    #help-dialog .key-row {
-        layout: horizontal;
-        height: 1;
-    }
-
-    #help-dialog .key {
-        width: 16;
-        text-style: bold;
-    }
-
-    #help-dialog .desc {
-        width: 1fr;
-    }
-
-    #help-dialog Button {
-        dock: bottom;
-        width: 100%;
-        margin-top: 1;
-    }
-    """
-
     def compose(self) -> ComposeResult:
         with Vertical(id="help-dialog"):
             yield Label("Keybindings & Usage", classes="header")

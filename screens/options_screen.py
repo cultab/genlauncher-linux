@@ -34,6 +34,7 @@ class OptionsScreen(Screen):
                 yield Button("Save", id="save-btn", variant="primary")
                 yield Button("Reset to Defaults", id="reset-btn")
                 yield Button("Back", id="back-btn", variant="default")
+        yield Footer()
 
     def on_mount(self) -> None:
         self._load_options()

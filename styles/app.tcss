@@ -1,0 +1,212 @@
+Screen {
+    background: $surface;
+}
+
+DataTable {
+    height: 1fr;
+    margin: 0 1;
+}
+
+DataTable > .datatable--header {
+    background: $primary 30%;
+    color: $text;
+    text-style: bold;
+}
+
+Button {
+    margin: 1 1;
+}
+
+.action-panel {
+    width: 30;
+    min-width: 26;
+    padding: 1 1;
+    border-left: solid $primary;
+}
+
+.action-panel Button {
+    width: 100%;
+}
+
+.status-row {
+    height: 3;
+    padding: 0 1;
+}
+
+.status-label {
+    width: 20;
+}
+
+.status-value {
+    width: 1fr;
+}
+
+.ok {
+    color: $success;
+}
+.fail {
+    color: $error;
+}
+
+#hint-text {
+    height: 1;
+    dock: bottom;
+    width: 1fr;
+    color: $text-muted;
+    text-style: italic;
+    padding: 0 1;
+}
+
+#mod-actions {
+    display: none;
+    margin: 1 0;
+    padding: 0 1;
+}
+
+#mod-actions Button {
+    width: 100%;
+    margin: 0 0 1 0;
+}
+
+#mod-list {
+    height: 1fr;
+}
+
+#back-button {
+    dock: bottom;
+    width: 100%;
+}
+
+.main-container {
+    layout: horizontal;
+    height: 1fr;
+}
+
+.left-panel {
+    width: 1fr;
+    padding: 1 1;
+}
+
+.right-panel {
+    width: 34;
+    min-width: 30;
+    max-width: 38;
+    padding: 1 1;
+    border-left: solid $primary;
+}
+
+.right-panel Button {
+    width: 100%;
+    margin: 0 0 1 0;
+}
+
+.right-panel .separator {
+    height: 1;
+    background: $primary 20%;
+    margin: 1 0;
+}
+
+.right-panel .section-header {
+    text-style: bold;
+    color: $text;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.right-panel .key-row {
+    layout: horizontal;
+    height: 1;
+}
+
+.right-panel .key {
+    width: 8;
+    text-style: bold;
+}
+
+.right-panel .desc {
+    width: 1fr;
+}
+
+.right-panel .status-value-colon {
+    width: 1fr;
+}
+
+OptionsScreen Input {
+    width: 1fr;
+}
+
+OptionsScreen RadioSet {
+    margin: 1 0;
+}
+
+#credits-content {
+    padding: 2 4;
+}
+
+#credits-content Label {
+    margin: 1 0;
+}
+
+.download-progress {
+    margin: 1 1;
+}
+
+#bottom-status-bar {
+    dock: bottom;
+    height: 1;
+    layout: horizontal;
+    padding: 0 1;
+    background: $surface;
+}
+
+#bottom-status-bar Label {
+    margin: 0 2;
+}
+
+/* HelpScreen modal */
+HelpScreen {
+    align: center middle;
+}
+
+#help-dialog {
+    width: 58;
+    height: auto;
+    padding: 1 2;
+    border: thick $primary;
+    background: $surface;
+}
+
+#help-dialog Label {
+    margin: 0 0;
+}
+
+#help-dialog .header {
+    text-style: bold;
+    color: $primary;
+    padding-bottom: 1;
+}
+
+#help-dialog .section {
+    text-style: bold;
+    margin-top: 1;
+}
+
+#help-dialog .key-row {
+    layout: horizontal;
+    height: 1;
+}
+
+#help-dialog .key {
+    width: 16;
+    text-style: bold;
+}
+
+#help-dialog .desc {
+    width: 1fr;
+}
+
+#help-dialog Button {
+    dock: bottom;
+    width: 100%;
+    margin-top: 1;
+}

@@ -30,6 +30,7 @@ packages = [
     "genlauncher_tui.models",
     "genlauncher_tui.services",
     "genlauncher_tui.screens",
+    "genlauncher_tui.styles",
     "genlauncher_tui.widgets",
 ]
 
