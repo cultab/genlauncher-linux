@@ -1,6 +1,6 @@
 # GenLauncher TUI
 
-**This project is VIBE-coded.** The majority of this codebase was generated through AI assistance (Claude, GitHub Copilot) on weekends. Commits have NOT been thoroughly reviewed by a human — use at your own risk.
+**This project is VIBE-coded.** The majority of this codebase was generated through AI assistance (opencode's free models, but they ran out so we're on a local 50k context gemma4 from ollama) on weekends. Commits have NOT been thoroughly reviewed by a human — use at your own risk.
 
 Terminal UI mod manager for Command & Conquer: Generals - Zero Hour (Steam version).
 
