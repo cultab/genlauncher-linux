@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 
-from textual.app import ComposeResult
+from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.screen import Screen
+from textual.timer import Timer
 from textual.widgets import DataTable, Label, Button, Header, Footer, Static, ProgressBar
 
 from genlauncher_tui.models.enums import InstallMethod
@@ -15,7 +17,14 @@ from genlauncher_tui.models.options import InstallationStatus
 from genlauncher_tui.services.steam_service import SteamService
 
 
+logger = logging.getLogger(__name__)
+
+
 class HomeScreen(Screen):
+    @property
+    def app(self) -> App:
+        return super().app
+
     BINDINGS = [
         Binding("f1", "show_help", "Help"),
         Binding("?", "show_help", "Help"),
@@ -27,7 +36,7 @@ class HomeScreen(Screen):
 
     def __init__(self):
         super().__init__()
-        self._poll_task: asyncio.Task | None = None
+        self._poll_task: Timer | None = None
 
     def compose(self) -> ComposeResult:
         app = self.app
@@ -125,6 +134,7 @@ class HomeScreen(Screen):
             path = SteamService.get_game_install_dir()
             sp.update(f"Game: {path}")
         except Exception:
+            logger.warning("Could not determine game install path", exc_info=True)
             sp.update("Game: Not found")
 
     def _poll_status(self) -> None:
@@ -181,8 +191,11 @@ class HomeScreen(Screen):
 
     async def _action_wrapper(self, action_fn):
         try:
-            action_fn()
+            r = action_fn()
+            if asyncio.iscoroutine(r):
+                await r
         except Exception as e:
+            logger.exception("Action failed")
             self.notify(str(e), severity="error")
         self._refresh_mods()
 
@@ -193,16 +206,19 @@ class HomeScreen(Screen):
             await self.app.mod_service.download_mod(name)
             self.notify(f"{name} downloaded", severity="information")
         except Exception as e:
+            logger.exception("Download failed")
             self.notify(f"Download failed: {e}", severity="error")
         self._refresh_mods()
 
-    def _do_install(self, mod: Mod):
+    async def _do_install(self, mod: Mod):
         name = mod.mod_info.mod_name
         opts = self.app.options_service.get_options()
         try:
+            await self.app.mod_service.ensure_gentool_installed(opts.install_method)
             self.app.mod_service.install_mod(name, opts.install_method)
             self.notify(f"{name} installed", severity="information")
         except Exception as e:
+            logger.exception("Install failed")
             self.notify(f"Install failed: {e}", severity="error")
         self._refresh_mods()
 
@@ -212,6 +228,7 @@ class HomeScreen(Screen):
             self.app.mod_service.uninstall_mod(name)
             self.notify(f"{name} uninstalled", severity="information")
         except Exception as e:
+            logger.exception("Uninstall failed")
             self.notify(f"Uninstall failed: {e}", severity="error")
         self._refresh_mods()
 
@@ -221,6 +238,7 @@ class HomeScreen(Screen):
             self.app.mod_service.delete_mod(name)
             self.notify(f"{name} files deleted", severity="information")
         except Exception as e:
+            logger.exception("Delete failed")
             self.notify(f"Delete failed: {e}", severity="error")
         self._refresh_mods()
 
@@ -230,6 +248,7 @@ class HomeScreen(Screen):
             self.app.mod_service.remove_mod_from_list(name)
             self.notify(f"{name} removed", severity="information")
         except Exception as e:
+            logger.exception("Remove failed")
             self.notify(f"Remove failed: {e}", severity="error")
         self._refresh_mods()
 

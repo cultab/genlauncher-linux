@@ -1,0 +1,13 @@
+{
+    "include": ["."],
+    "exclude": ["tests", "**/__pycache__"],
+    "typeCheckingMode": "basic",
+    "reportAttributeAccessIssue": false,
+    "reportMissingModuleSource": false,
+    "reportPrivateImportUsage": false,
+    "reportUnusedImport": false,
+    "reportUnusedVariable": false,
+    "reportWildcardImportFromLibrary": false,
+    "useLibraryCodeForTypes": false,
+    "extraPaths": [".."]
+}

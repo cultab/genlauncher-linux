@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -10,7 +13,14 @@ from textual.widgets import DataTable, Button, Label, LoadingIndicator, Header, 
 from genlauncher_tui.models.repo import ModAddonsAndPatches, ReposModsData
 
 
+logger = logging.getLogger(__name__)
+
+
 class AddModScreen(Screen):
+    @property
+    def app(self) -> Any:
+        return super().app
+
     BINDINGS = [
         Binding("escape", "back", "Back"),
     ]
@@ -65,6 +75,7 @@ class AddModScreen(Screen):
             if unadded.mod_datas:
                 table.move_cursor(row=0)
         except Exception as e:
+            logger.exception("Failed to fetch mods")
             self.query_one("#loading", LoadingIndicator).display = False
             self.query_one("#add-mod-title", Label).update(f"Available Mods - Error: {e}")
             self.notify(f"Failed to fetch mods: {e}", severity="error")

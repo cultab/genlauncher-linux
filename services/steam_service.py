@@ -4,6 +4,7 @@ import os
 import platform
 import re
 from pathlib import Path
+from typing import Optional
 
 from genlauncher_tui.models.enums import GameType
 
@@ -66,13 +67,13 @@ class SteamService:
         raise FileNotFoundError("Zero Hour game installation not found in any Steam library")
 
     @staticmethod
-    def get_generals_install_dir(steam_install_path: str = None) -> str:
+    def get_generals_install_dir(steam_install_path: Optional[str] = None) -> str:
         if steam_install_path is None:
             steam_install_path = SteamService.get_steam_install_path()
         return os.path.join(steam_install_path, "Command and Conquer Generals")
 
     @staticmethod
-    def get_zero_hour_install_dir(steam_install_path: str = None) -> str:
+    def get_zero_hour_install_dir(steam_install_path: Optional[str] = None) -> str:
         if steam_install_path is None:
             steam_install_path = SteamService.get_steam_install_path()
         return os.path.join(steam_install_path, "Command & Conquer Generals - Zero Hour")

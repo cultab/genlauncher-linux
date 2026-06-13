@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import shutil
 from typing import Optional
@@ -62,6 +63,9 @@ def _find_file_recursively(folder: str, target: str) -> Optional[str]:
             if f.lower() == target.lower():
                 return os.path.join(root, f)
     return None
+
+
+logger = logging.getLogger(__name__)
 
 
 class ModService:
@@ -243,83 +247,89 @@ class ModService:
             mod.downloading = True
             self._write_mod_list()
 
-        cleaned = mod.cleaned_mod_name
-        mod_dir = os.path.join(self._get_mod_dir(), cleaned)
-        os.makedirs(mod_dir, exist_ok=True)
-        installed_files: list[str] = []
-        total_install_size = 0
+        try:
+            cleaned = mod.cleaned_mod_name
+            mod_dir = os.path.join(self._get_mod_dir(), cleaned)
+            os.makedirs(mod_dir, exist_ok=True)
+            installed_files: list[str] = []
+            total_install_size = 0
 
-        if mod.has_s3_storage():
-            from genlauncher_tui.services.s3_service import S3StorageService
-            s3 = S3StorageService()
-            try:
-                file_list = await s3.get_mod_files(mod)
-                total_size = sum(f.size for f in file_list)
-                self._create_s3_progress(total_size, file_list, cleaned)
-                for f in file_list:
-                    file_path = os.path.join(mod_dir, f.file_name)
-                    if os.path.isfile(file_path):
+            if mod.has_s3_storage():
+                from genlauncher_tui.services.s3_service import S3StorageService
+                s3 = S3StorageService()
+                try:
+                    file_list = await s3.get_mod_files(mod)
+                    total_size = sum(f.size for f in file_list)
+                    self._create_s3_progress(total_size, file_list, cleaned)
+                    for f in file_list:
+                        file_path = os.path.join(mod_dir, f.file_name)
+                        if os.path.isfile(file_path):
+                            if get_md5(file_path) == f.hash.lower():
+                                self._download_progress[standard_mod_name(cleaned)].downloaded_files.append(f.file_name)
+                                self._download_progress[standard_mod_name(cleaned)].downloaded_size += f.size
+                                total_install_size += f.size
+                                continue
+                            os.unlink(file_path)
+                        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                        data = await s3.download_s3_file(f.file_name, mod)
+                        with open(file_path, "wb") as fh:
+                            fh.write(data)
                         if get_md5(file_path) == f.hash.lower():
+                            installed_files.append(f.file_name)
                             self._download_progress[standard_mod_name(cleaned)].downloaded_files.append(f.file_name)
-                            self._download_progress[standard_mod_name(cleaned)].downloaded_size += f.size
                             total_install_size += f.size
-                            continue
-                        os.unlink(file_path)
-                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                    data = await s3.download_s3_file(f.file_name, mod)
-                    with open(file_path, "wb") as fh:
-                        fh.write(data)
-                    if get_md5(file_path) == f.hash.lower():
-                        installed_files.append(f.file_name)
-                        self._download_progress[standard_mod_name(cleaned)].downloaded_files.append(f.file_name)
-                        total_install_size += f.size
-                        self._download_progress[standard_mod_name(cleaned)].downloaded_size += f.size
-                    else:
-                        if "changelog" not in file_path.lower() and os.path.splitext(file_path)[1].lower() != ".txt":
-                            raise RuntimeError(f"Hash mismatch for {f.file_name}")
+                            self._download_progress[standard_mod_name(cleaned)].downloaded_size += f.size
+                        else:
+                            if "changelog" not in file_path.lower() and os.path.splitext(file_path)[1].lower() != ".txt":
+                                raise RuntimeError(f"Hash mismatch for {f.file_name}")
+                    self._download_progress[standard_mod_name(cleaned)].downloaded = True
+                finally:
+                    await s3.close()
+            else:
+                link = _parse_download_link(mod.mod_data.simple_download_link)
+                key = standard_mod_name(cleaned)
+                self._create_simple_progress(mod_name, 0)
+
+                def _progress(downloaded: int, total: int):
+                    p = self._download_progress.get(key)
+                    if p:
+                        p.total_download_size = total
+                        p.downloaded_size = downloaded
+
+                data, content_type = await download_bytes(link, progress_callback=_progress)
+                total_size = len(data)
+                self._download_progress[key].total_download_size = total_size
+                self._download_progress[key].downloaded_size = total_size
+
+                ext = _mime_to_ext(content_type)
+                if not ext:
+                    ext = ".zip"
+                archive_path = os.path.join(mod_dir, cleaned + ext)
+                with open(archive_path, "wb") as fh:
+                    fh.write(data)
+                self._download_progress[standard_mod_name(cleaned)].downloaded_size = total_size
+
+                extract_archive(archive_path, mod_dir)
+                installed_files = get_all_files_recursively(mod_dir)
+                installed_files = [os.path.relpath(f, mod_dir) for f in installed_files]
+                total_install_size = get_total_size([os.path.join(mod_dir, f) for f in installed_files])
                 self._download_progress[standard_mod_name(cleaned)].downloaded = True
-            finally:
-                await s3.close()
-        else:
-            link = _parse_download_link(mod.mod_data.simple_download_link)
-            key = standard_mod_name(cleaned)
-            self._create_simple_progress(mod_name, 0)
+                self._download_progress[standard_mod_name(cleaned)].downloaded_files = list(installed_files)
+                self._download_progress[standard_mod_name(cleaned)].downloaded_size = total_install_size
 
-            def _progress(downloaded: int, total: int):
-                p = self._download_progress.get(key)
-                if p:
-                    p.total_download_size = total
-                    p.downloaded_size = downloaded
-
-            data, content_type = await download_bytes(link, progress_callback=_progress)
-            total_size = len(data)
-            self._download_progress[key].total_download_size = total_size
-            self._download_progress[key].downloaded_size = total_size
-
-            ext = _mime_to_ext(content_type)
-            if not ext:
-                ext = ".zip"
-            archive_path = os.path.join(mod_dir, cleaned + ext)
-            with open(archive_path, "wb") as fh:
-                fh.write(data)
-            self._download_progress[standard_mod_name(cleaned)].downloaded_size = total_size
-
-            extract_archive(archive_path, mod_dir)
-            installed_files = get_all_files_recursively(mod_dir)
-            installed_files = [os.path.relpath(f, mod_dir) for f in installed_files]
-            total_install_size = get_total_size([os.path.join(mod_dir, f) for f in installed_files])
-            self._download_progress[standard_mod_name(cleaned)].downloaded = True
-            self._download_progress[standard_mod_name(cleaned)].downloaded_files = list(installed_files)
-            self._download_progress[standard_mod_name(cleaned)].downloaded_size = total_install_size
-
-        async with self._lock:
-            mod.downloading = False
-            mod.downloaded = True
-            mod.downloaded_version = mod.mod_data.version if mod.mod_data else ""
-            mod.downloaded_files = installed_files
-            mod.total_size = total_install_size
-            mod.mod_dir = mod_dir
-            self._write_mod_list()
+            async with self._lock:
+                mod.downloading = False
+                mod.downloaded = True
+                mod.downloaded_version = mod.mod_data.version if mod.mod_data else ""
+                mod.downloaded_files = installed_files
+                mod.total_size = total_install_size
+                mod.mod_dir = mod_dir
+                self._write_mod_list()
+        except BaseException:
+            async with self._lock:
+                mod.downloading = False
+                self._write_mod_list()
+            raise
 
     def _create_s3_progress(self, total_size: int, file_list: list, cleaned: str):
         key = standard_mod_name(cleaned)
@@ -350,7 +360,7 @@ class ModService:
         if not mod:
             raise ValueError(f"Mod not found: {mod_name}")
 
-        if any(m.installed for m in self._added_mods):
+        if any(m.installed and m.mod_info.mod_name != mod_name for m in self._added_mods):
             raise RuntimeError("Another mod is already installed. Uninstall it first.")
 
         self._ensure_modded_launcher_installed(install_method)
@@ -379,6 +389,7 @@ class ModService:
 
         mod.installed = True
         self._write_mod_list()
+        self._ensure_modded_launcher_installed(install_method)
 
     def uninstall_mod(self, mod_name: str):
         mod = None
@@ -420,10 +431,12 @@ class ModService:
         try:
             ml = self._check_modded_launcher_installed()
         except Exception:
+            logger.warning("Could not check modded launcher status", exc_info=True)
             ml = False
         try:
             gt = self._check_gentool_installed()
         except Exception:
+            logger.warning("Could not check GenTool status", exc_info=True)
             gt = False
         return InstallationStatus(modded_launcher=ml, gen_tool=gt)
 

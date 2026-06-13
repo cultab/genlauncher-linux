@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
 import os
 import platform
 import tempfile
+
+
+logger = logging.getLogger(__name__)
 
 
 class SymLinkService:
@@ -22,13 +26,14 @@ class SymLinkService:
             os.unlink(tmpfile)
             return supported
         except (OSError, AttributeError):
+            logger.warning("Symlink test failed", exc_info=True)
             try:
                 if os.path.exists(symlink):
                     os.unlink(symlink)
                 if os.path.exists(tmpfile):
                     os.unlink(tmpfile)
             except OSError:
-                pass
+                logger.warning("Symlink test cleanup failed", exc_info=True)
             return False
 
     @staticmethod

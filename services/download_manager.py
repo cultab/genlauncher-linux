@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import zipfile
 from pathlib import Path
 from typing import Callable, Optional
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 _PROGRESS_CALLBACK = Optional[Callable[[int, int], None]]
 
@@ -103,7 +106,7 @@ def get_all_files_recursively(path: str) -> list[str]:
             for f in filenames:
                 files.append(os.path.join(root, f))
     except (PermissionError, OSError):
-        pass
+        logger.warning("Could not list files recursively in %s", path, exc_info=True)
     return files
 
 
@@ -113,5 +116,5 @@ def get_total_size(file_paths: list[str]) -> int:
         try:
             total += os.path.getsize(fp)
         except OSError:
-            pass
+            logger.warning("Could not get size of %s", fp, exc_info=True)
     return total

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import dataclasses
 import re
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from .enums import ModificationType
+
+if TYPE_CHECKING:
+    from .repo import ModAddonsAndPatches
 
 
 @dataclasses.dataclass

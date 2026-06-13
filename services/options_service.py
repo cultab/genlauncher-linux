@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Optional
 
@@ -14,9 +15,12 @@ from genlauncher_tui.services.symlink_service import SymLinkService
 OPTIONS_FILENAME = "genlauncher_options.json"
 
 
+logger = logging.getLogger(__name__)
+
+
 class OptionsService:
     def __init__(self):
-        self._options: Optional[LauncherOptions] = None
+        self._options: LauncherOptions | None = None
 
     @staticmethod
     def get_app_data_folder() -> str:
@@ -46,20 +50,26 @@ class OptionsService:
 
     def _write_options(self):
         path = self.get_app_data_file()
+        opts = self._options
+        if opts is None:
+            opts = self._default_settings()
         with open(path, "w") as f:
             json.dump({
-                "install_method": self._options.install_method.value,
-                "steam_path": self._options.steam_path,
+                "install_method": opts.install_method.value,
+                "steam_path": opts.steam_path,
             }, f, indent=2)
 
     def _fix_options(self):
-        if self._options.install_method == InstallMethod.SymLink and not SymLinkService.is_symlinks_supported():
-            self._options.install_method = InstallMethod.CopyFiles
-        if not self._options.steam_path:
+        opts = self._options
+        if opts is None:
+            return
+        if opts.install_method == InstallMethod.SymLink and not SymLinkService.is_symlinks_supported():
+            opts.install_method = InstallMethod.CopyFiles
+        if not opts.steam_path:
             try:
-                self._options.steam_path = SteamService.get_steam_install_path()
+                opts.steam_path = SteamService.get_steam_install_path()
             except Exception:
-                pass
+                logger.warning("Could not auto-detect Steam path", exc_info=True)
 
     @staticmethod
     def _default_settings() -> LauncherOptions:
@@ -68,7 +78,7 @@ class OptionsService:
         try:
             steam_path = SteamService.get_steam_install_path()
         except Exception:
-            pass
+            logger.warning("Could not detect default Steam path", exc_info=True)
         return LauncherOptions(install_method=method, steam_path=steam_path)
 
     @staticmethod
@@ -80,7 +90,7 @@ class OptionsService:
                 import shutil
                 shutil.move(old_file, OptionsService.get_app_data_file())
         except Exception:
-            pass
+            logger.warning("Failed to migrate old options location", exc_info=True)
 
     def get_options(self) -> LauncherOptions:
         if self._options is None:

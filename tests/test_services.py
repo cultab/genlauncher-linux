@@ -8,8 +8,6 @@ from unittest.mock import patch
 
 import pytest
 
-import pytest
-
 from genlauncher_tui.config import CONFIG
 from genlauncher_tui.models.enums import InstallMethod
 from genlauncher_tui.models.mod import Mod, ModData
