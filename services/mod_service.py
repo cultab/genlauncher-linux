@@ -109,6 +109,18 @@ class ModService:
                         mod_patches=mi.get("mod_patches", []),
                         mod_addons=mi.get("mod_addons", []),
                     )
+                md = entry.get("mod_data")
+                if md:
+                    m.mod_data = ModData(
+                        name=md.get("name", ""),
+                        version=md.get("version", ""),
+                        simple_download_link=md.get("simple_download_link"),
+                        s3_host_link=md.get("s3_host_link"),
+                        s3_bucket_name=md.get("s3_bucket_name"),
+                        s3_folder_name=md.get("s3_folder_name"),
+                        s3_host_public_key=md.get("s3_host_public_key"),
+                        s3_host_secret_key=md.get("s3_host_secret_key"),
+                    )
                 self._added_mods.append(m)
         else:
             self._added_mods = []
@@ -134,6 +146,17 @@ class ModService:
                     "mod_link": m.mod_info.mod_link,
                     "mod_patches": m.mod_info.mod_patches,
                     "mod_addons": m.mod_info.mod_addons,
+                }
+            if m.mod_data:
+                entry["mod_data"] = {
+                    "name": m.mod_data.name,
+                    "version": m.mod_data.version,
+                    "simple_download_link": m.mod_data.simple_download_link,
+                    "s3_host_link": m.mod_data.s3_host_link,
+                    "s3_bucket_name": m.mod_data.s3_bucket_name,
+                    "s3_folder_name": m.mod_data.s3_folder_name,
+                    "s3_host_public_key": m.mod_data.s3_host_public_key,
+                    "s3_host_secret_key": m.mod_data.s3_host_secret_key,
                 }
             raw.append(entry)
         with open(self._modlist_path(), "w") as f:
@@ -259,9 +282,19 @@ class ModService:
                 await s3.close()
         else:
             link = _parse_download_link(mod.mod_data.simple_download_link)
-            data, content_type = await download_bytes(link)
+            key = standard_mod_name(cleaned)
+            self._create_simple_progress(mod_name, 0)
+
+            def _progress(downloaded: int, total: int):
+                p = self._download_progress.get(key)
+                if p:
+                    p.total_download_size = total
+                    p.downloaded_size = downloaded
+
+            data, content_type = await download_bytes(link, progress_callback=_progress)
             total_size = len(data)
-            self._create_simple_progress(mod_name, total_size)
+            self._download_progress[key].total_download_size = total_size
+            self._download_progress[key].downloaded_size = total_size
 
             ext = _mime_to_ext(content_type)
             if not ext:
@@ -273,7 +306,8 @@ class ModService:
 
             extract_archive(archive_path, mod_dir)
             installed_files = get_all_files_recursively(mod_dir)
-            total_install_size = get_total_size(installed_files)
+            installed_files = [os.path.relpath(f, mod_dir) for f in installed_files]
+            total_install_size = get_total_size([os.path.join(mod_dir, f) for f in installed_files])
             self._download_progress[standard_mod_name(cleaned)].downloaded = True
             self._download_progress[standard_mod_name(cleaned)].downloaded_files = list(installed_files)
             self._download_progress[standard_mod_name(cleaned)].downloaded_size = total_install_size

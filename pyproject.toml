@@ -18,6 +18,9 @@ dependencies = [
     "platformdirs",
 ]
 
+[project.optional-dependencies]
+archive = ["py7zr", "rarfile"]
+
 [project.scripts]
 genlauncher = "genlauncher_tui.__main__:main"
 

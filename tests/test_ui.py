@@ -397,71 +397,63 @@ async def test_launch_button_exists():
 
 
 @pytest.mark.asyncio
-async def test_mod_actions_modal_appears_on_enter():
+async def test_mod_actions_appear_on_row_select():
     app = GenLauncherApp()
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
 
-        # Add a mod first
         await pilot.press("a")
         await pilot.pause(2)
         await pilot.click("#add-mod-btn")
         await pilot.pause()
 
-        # Go home
         await pilot.press("escape")
         await pilot.pause()
 
-        # Should have 1 row in the table
         table = app.screen.query_one("#mod-table")
         assert len(table.rows) == 1
 
-        # Press Enter on the selected row to open actions modal
+        # Select the row — action buttons should appear
         await pilot.press("enter")
         await pilot.pause()
 
-        # Should show the ModActions modal screen
-        assert "ModActions" in type(app.screen).__name__, \
-            f"Expected ModActions modal, got {type(app.screen).__name__}"
-        from textual.screen import ModalScreen
-        assert isinstance(app.screen, ModalScreen)
+        actions_container = app.screen.query_one("#mod-actions")
+        assert actions_container.display is True
 
 
 @pytest.mark.asyncio
-async def test_mod_actions_modal_shows_correct_buttons():
+async def test_mod_actions_show_correct_buttons():
     app = GenLauncherApp()
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
 
-        # Add a mod
         await pilot.press("a")
         await pilot.pause(2)
         await pilot.click("#add-mod-btn")
         await pilot.pause()
 
-        # Go home
         await pilot.press("escape")
         await pilot.pause()
 
-        # Open actions modal
+        # Select the row
         await pilot.press("enter")
         await pilot.pause()
 
-        # Check for the action buttons
-        # For an un-downloaded, un-installed mod, we expect Download and Remove from List
-        download_btn = app.screen.query("#act-download")
-        remove_btn = app.screen.query("#act-remove-from-list")
-        assert len(download_btn) == 1, "Expected Download button in modal"
-        assert len(remove_btn) == 1, "Expected Remove from List button in modal"
+        # For an un-downloaded, un-installed mod: Download + Remove visible
+        download_btn = app.screen.query_one("#act-download")
+        remove_btn = app.screen.query_one("#act-remove")
+        install_btn = app.screen.query_one("#act-install")
+        assert download_btn.display is True
+        assert remove_btn.display is True
+        assert install_btn.display is False
 
 
 @pytest.mark.asyncio
-async def test_remove_mod_from_list_via_actions_modal():
+async def test_remove_mod_from_list_via_action_button():
     app = GenLauncherApp()
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
 
-        # Add a mod
         await pilot.press("a")
         await pilot.pause(2)
         await pilot.click("#add-mod-btn")
@@ -470,49 +462,41 @@ async def test_remove_mod_from_list_via_actions_modal():
         added = app.mod_service.get_added_mods()
         assert len(added) == 1
 
-        # Go home
         await pilot.press("escape")
         await pilot.pause()
 
-        # Open actions modal
+        # Select the row
         await pilot.press("enter")
         await pilot.pause()
 
-        # Click Remove from List
-        await pilot.click("#act-remove-from-list")
+        # Click Remove
+        await pilot.click("#act-remove")
         await pilot.pause()
 
-        # Mod should be removed
         remaining = app.mod_service.get_added_mods()
-        assert len(remaining) == 0, f"Expected 0 mods after remove, got {len(remaining)}"
-
-        # Home table should be empty
+        assert len(remaining) == 0
         table = app.screen.query_one("#mod-table")
-        assert len(table.rows) == 0, "Table should be empty after removing the mod"
+        assert len(table.rows) == 0
 
 
 @pytest.mark.asyncio
-async def test_actions_modal_dismisses_on_button_click():
+async def test_mod_action_keeps_home_screen():
     app = GenLauncherApp()
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
 
-        # Add a mod
         await pilot.press("a")
         await pilot.pause(2)
         await pilot.click("#add-mod-btn")
         await pilot.pause()
 
-        # Go home, open modal
         await pilot.press("escape")
         await pilot.pause()
         await pilot.press("enter")
         await pilot.pause()
 
-        # Dismiss by clicking an action
-        await pilot.click("#act-remove-from-list")
+        await pilot.click("#act-remove")
         await pilot.pause()
 
-        # Should be back on HomeScreen after the action
-        assert "Home" in type(app.screen).__name__, \
-            f"Expected HomeScreen after action, got {type(app.screen).__name__}"
+        # Should still be on HomeScreen (no modal)
+        assert "Home" in type(app.screen).__name__

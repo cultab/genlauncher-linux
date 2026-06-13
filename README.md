@@ -1,6 +1,6 @@
 # GenLauncher TUI
 
-**This project is vibecoded.** The majority of this codebase was generated through AI assistance (Claude, GitHub Copilot) with human review and direction.
+**This project is VIBE-coded.** The majority of this codebase was generated through AI assistance (Claude, GitHub Copilot) on weekends. Commits have NOT been thoroughly reviewed by a human — use at your own risk.
 
 Terminal UI mod manager for Command & Conquer: Generals - Zero Hour (Steam version).
 
@@ -36,18 +36,10 @@ Run `genlauncher` from your terminal.
 
 - Python 3.10+
 - Steam with Command & Conquer: Generals - Zero Hour installed
-- Optional: `py7zr` for 7z archive support, `rarfile` for RAR support
+- Optional: `pip install .[archive]` for 7z/RAR archive support (py7zr, rarfile)
 
 ## License
 
 CC0 1.0 Universal (Creative Commons Zero) — see `LICENSE`.
 
-## AI Provenance Notice
 
-This software contains code that was written with assistance from AI tools.
-
-- AI TOOLS USED: Claude, GitHub Copilot
-- AI ASSISTED PORTIONS: HIGH (majority AI generated)
-- HUMAN REVIEW: All AI-assisted commits were reviewed and accepted by a human developer who is the author of record.
-
-This notice is informational. It does not modify or override the CC0 license terms above.

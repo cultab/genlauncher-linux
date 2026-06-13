@@ -1,14 +1,12 @@
-import os
-import tempfile
-
-import pytest
-
 import hashlib
+import io
 import json
 import os
 import tempfile
 import zipfile
 from unittest.mock import patch
+
+import pytest
 
 import pytest
 
@@ -362,23 +360,37 @@ class TestDownloadManager:
             assert not os.path.isfile(zip_path)
 
 
+def _7z_exception():
+    try:
+        import py7zr
+        return py7zr.exceptions.Bad7zFile
+    except ImportError:
+        return RuntimeError
+
+def _rar_exception():
+    try:
+        import rarfile
+        return rarfile.NotRarFile
+    except ImportError:
+        return RuntimeError
+
 class TestDownloadManagerExtraction:
-    def test_extract_7z_missing_dependency(self):
+    def test_extract_7z_bad_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             dummy = os.path.join(tmpdir, "mod.7z")
             with open(dummy, "wb") as f:
                 f.write(b"fake 7z content")
             dest = os.path.join(tmpdir, "out")
-            with pytest.raises(RuntimeError, match="py7zr"):
+            with pytest.raises(_7z_exception()):
                 extract_archive(dummy, dest)
 
-    def test_extract_rar_missing_dependency(self):
+    def test_extract_rar_bad_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             dummy = os.path.join(tmpdir, "mod.rar")
             with open(dummy, "wb") as f:
                 f.write(b"fake rar content")
             dest = os.path.join(tmpdir, "out")
-            with pytest.raises(RuntimeError, match="rarfile"):
+            with pytest.raises(_rar_exception()):
                 extract_archive(dummy, dest)
 
     def test_mime_to_ext_variants(self):
@@ -666,3 +678,100 @@ class TestModServiceDirectoryCreation:
                 modlist = os.path.join(nested, MODLIST_FILE)
                 assert os.path.isfile(modlist), "Modlist file should exist"
                 assert os.path.isdir(nested), "Directory should have been created"
+
+
+def _make_fake_zip(files: dict[str, bytes]) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, content in files.items():
+            zf.writestr(name, content)
+    return buf.getvalue()
+
+
+class TestDownloadAndInstallFullFlow:
+    @pytest.mark.asyncio
+    async def test_download_and_install_full_flow(self):
+        data = ReposModsData()
+        data.mod_datas.append(ModAddonsAndPatches(mod_name="Test Mod"))
+
+        zip_bytes = _make_fake_zip({"mod.big": b"mod data"})
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mods_dir = os.path.join(tmpdir, "mods")
+            game_dir = os.path.join(tmpdir, "game")
+            os.makedirs(mods_dir)
+            os.makedirs(game_dir)
+
+            generals_exe = os.path.join(game_dir, "Generals.exe")
+            with open(generals_exe, "w") as f:
+                f.write("exe")
+            modded_dir = os.path.join(mods_dir, "ModdedLauncher")
+            os.makedirs(modded_dir)
+            modded_exe = os.path.join(modded_dir, "modded.exe")
+            with open(modded_exe, "w") as f:
+                f.write("exe")
+
+            with patch.object(SteamService, "get_mod_dir", return_value=mods_dir):
+                with patch.object(SteamService, "get_game_install_dir", return_value=game_dir):
+                    svc = ModService(repo_data=data)
+                    svc.add_mod_to_list("Test Mod")
+                    mod = svc.get_added_mods()[0]
+
+                    mod.mod_data = ModData(
+                        name="Test Mod",
+                        version="1.0",
+                        simple_download_link="http://fake.example.com/mod.zip",
+                    )
+
+                    with patch("genlauncher_tui.services.mod_service.download_bytes",
+                              return_value=(zip_bytes, "application/zip")):
+                        await svc.download_mod("Test Mod")
+
+                    assert mod.downloading is False
+                    assert mod.downloaded is True
+                    assert mod.downloaded_version == "1.0"
+                    assert mod.mod_dir is not None
+                    assert os.path.isdir(mod.mod_dir)
+                    assert mod.downloaded_files is not None
+                    assert any("mod.big" in f for f in mod.downloaded_files)
+
+                    svc.install_mod("Test Mod", InstallMethod.CopyFiles)
+
+                    dest = os.path.join(game_dir, "mod.big")
+                    assert os.path.isfile(dest)
+                    with open(dest) as f:
+                        assert f.read() == "mod data"
+                    assert mod.installed is True
+
+
+# --- Network-dependent integration test (not auto-discovered) ---
+# Run manually: python -m pytest tests/test_services.py::_real_s3_listing_and_download -x
+
+from genlauncher_tui.services.s3_service import S3StorageService
+
+async def _real_s3_listing_and_download():
+    """List and download Contra mod files from real S3 server (network required)."""
+    mod = Mod()
+    mod.mod_data = ModData(
+        name="Contra",
+        version="XBeta2",
+        s3_host_link="gen.insave.ovh:9000",
+        s3_bucket_name="contra",
+        s3_folder_name="contra-individual-files",
+    )
+
+    s3 = S3StorageService()
+    try:
+        files = await s3.get_mod_files(mod)
+        assert len(files) == 14, f"Expected 14 Contra files, got {len(files)}"
+        for f in files:
+            assert f.hash, f"Missing hash for {f.file_name}"
+
+        # Download the smallest file (Install_Final.bmp, ~1.4MB)
+        target = next(f for f in files if f.file_name == "Install_Final.bmp")
+        data = await s3.download_s3_file(target.file_name, mod)
+        assert len(data) == target.size, f"Size mismatch: {len(data)} vs {target.size}"
+        md5 = hashlib.md5(data).hexdigest()
+        assert md5 == target.hash, f"MD5 mismatch: {md5} vs {target.hash}"
+    finally:
+        await s3.close()

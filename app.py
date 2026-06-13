@@ -67,9 +67,21 @@ class GenLauncherApp(App):
     #hint-text {
         height: 1;
         dock: bottom;
+        width: 1fr;
         color: $text-muted;
         text-style: italic;
         padding: 0 1;
+    }
+
+    #mod-actions {
+        display: none;
+        margin: 1 0;
+        padding: 0 1;
+    }
+
+    #mod-actions Button {
+        width: 100%;
+        margin: 0 0 1 0;
     }
 
     #mod-list {
@@ -92,8 +104,8 @@ class GenLauncherApp(App):
     }
 
     .right-panel {
-        width: 30;
-        min-width: 26;
+        width: 34;
+        min-width: 30;
         padding: 1 1;
         border-left: solid $primary;
     }
@@ -112,6 +124,10 @@ class GenLauncherApp(App):
 
     #credits-content Label {
         margin: 1 0;
+    }
+
+    .download-progress {
+        margin: 1 1;
     }
     """
 
