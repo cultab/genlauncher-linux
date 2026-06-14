@@ -8,7 +8,7 @@ Built with [Textual](https://textual.textualize.io/) v1+, Python 3.10+.
 ```bash
 pip install -e ".[archive]"        # editable install with archive support
 genlauncher                        # launch the TUI (also: python -m genlauncher_tui)
-python -m pytest tests/ -v         # run all 97 tests
+python -m pytest tests/ -v         # run full suite before commits
 python -m pytest tests/test_ui.py -v -k "test_name"  # single UI test
 ```
 
@@ -23,6 +23,10 @@ python -m pytest tests/test_ui.py -v -k "test_name"  # single UI test
 - **Styles** (`styles/`): `app.tcss` — Textual CSS for the entire UI.
 - **Data models** (`models/`): `Mod`, `ModData` (extends `ModificationReposVersion`), `LauncherOptions`, `InstallationStatus`.
 
+## Workflow
+
+- Before starting a new feature, check `git status` and `git diff` for uncommitted changes. If they exist, commit them with a descriptive message before proceeding to the new feature. Create a todo for the new feature.
+
 ## Conventions
 
 - Use `from __future__ import annotations` at top of every file.
@@ -33,10 +37,17 @@ python -m pytest tests/test_ui.py -v -k "test_name"  # single UI test
 
 ## Testing
 
-- 97 tests across 4 files: `test_models.py`, `test_services.py`, `test_ui.py`, `test_entry_point.py`.
-- `conftest.py` backs up and restores the real mod list file — tests must not destroy user data.
+- 125 tests across 6 files: `test_models.py`, `test_services.py`, `test_ui.py`, `test_entry_point.py`, `test_image_service.py`, `test_thumbnail_widget.py`.
+- Run targeted suites during iteration (e.g. `tests/test_thumbnail_widget.py`), full suite only before commits.
+- `conftest.py` patches `SteamService.get_mod_dir` to a temp dir for every test — tests never touch real user data.
 - `test_download_and_install_full_flow` is the slowest (actual S3 HTTP + file I/O).
 - Archive extraction tests (`test_extract_7z_bad_file`, `test_extract_rar_bad_file`) require `py7zr` / `rarfile` from `[archive]` extras.
+
+## Logs
+
+- Log directory: `platformdirs.user_log_dir("genlauncher")` → Linux: `~/.local/state/genlauncher/log/`
+- RotatingFileHandler (1 MB, 3 backups), root logger at WARNING to silence httpx noise.
+- Filenames: `genlauncher_YYYYMMDD_HHMMSS.log`
 
 ## Gotchas
 

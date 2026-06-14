@@ -16,6 +16,8 @@ dependencies = [
     "httpx",
     "pyyaml",
     "platformdirs",
+    "Pillow",
+    "rich-pixels",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +36,9 @@ packages = [
     "genlauncher_tui.styles",
     "genlauncher_tui.widgets",
 ]
+
+[tool.setuptools.package-data]
+genlauncher_tui = ["styles/*.tcss"]
 
 [tool.setuptools.package-dir]
 "genlauncher_tui" = "."

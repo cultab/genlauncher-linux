@@ -14,10 +14,12 @@ from textual.widgets import DataTable, Label, Button, ProgressBar, Static
 
 from genlauncher_tui.models.mod import Mod
 from genlauncher_tui.models.options import InstallationStatus
+from genlauncher_tui.services.image_service import ThumbnailService
 from genlauncher_tui.services.steam_service import SteamService
 from genlauncher_tui.widgets.action_panel import ModActionPanel
 from genlauncher_tui.widgets.key_hints import KeyHints
 from genlauncher_tui.widgets.status_panel import StatusPanel
+from genlauncher_tui.widgets.thumbnail import ThumbnailWidget, supports_image_protocol
 
 
 logger = logging.getLogger(__name__)
@@ -40,6 +42,8 @@ class HomeScreen(Screen):
     def __init__(self):
         super().__init__()
         self._poll_task: Timer | None = None
+        self._image_service: ThumbnailService | None = None
+        self._thumbnail_task: asyncio.Task | None = None
 
     def compose(self) -> ComposeResult:
         app = self.app
@@ -47,6 +51,7 @@ class HomeScreen(Screen):
             with Vertical(classes="left-panel"):
                 yield DataTable(id="mod-table", cursor_type="row")
                 yield Label("Select a mod row for actions", id="hint-text")
+                yield ThumbnailWidget(id="mod-thumbnail")
                 yield ModActionPanel(id="mod-actions")
             with Vertical(classes="right-panel"):
                 yield Label("Quick Actions", classes="section-header")
@@ -68,6 +73,13 @@ class HomeScreen(Screen):
             yield Label("", id="bottom-progress-label")
 
     def on_mount(self) -> None:
+        self._image_service = ThumbnailService()
+        if not supports_image_protocol():
+            self.notify(
+                "Terminal does not support image display. Using text-based thumbnails.",
+                timeout=5,
+                severity="warning",
+            )
         table = self.query_one("#mod-table", DataTable)
         table.columns.clear()
         table.add_column("Mod", width=None)
@@ -77,6 +89,11 @@ class HomeScreen(Screen):
         self._refresh_mods()
         self._refresh_status()
         self._poll_task = self.set_interval(2.0, self._poll_status)
+        table.focus()
+
+    def on_unmount(self) -> None:
+        if self._thumbnail_task and not self._thumbnail_task.done():
+            self._thumbnail_task.cancel()
 
     def on_screen_resume(self) -> None:
         self._refresh_mods()
@@ -110,9 +127,10 @@ class HomeScreen(Screen):
                 status = "Not downloaded"
             size_str = _format_size(mod.total_size)
             table.add_row(name, ver, status, size_str)
-        if self.selected_mod and self.selected_mod not in mods:
+        if mods and self.selected_mod is None:
+            self.selected_mod = mods[0]
+        elif self.selected_mod and self.selected_mod not in mods:
             self.selected_mod = None
-        self.watch_selected_mod(self.selected_mod)
 
     def _refresh_status(self):
         app = self.app
@@ -154,7 +172,7 @@ class HomeScreen(Screen):
             fl.update("")
             bp.update("")
 
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         table = self.query_one("#mod-table", DataTable)
         row_key = event.row_key
         if row_key is None:
@@ -171,11 +189,40 @@ class HomeScreen(Screen):
     def watch_selected_mod(self, mod: Mod | None) -> None:
         action_panel = self.query_one("#mod-actions", ModActionPanel)
         hint = self.query_one("#hint-text", Label)
+        thumbnail = self.query_one("#mod-thumbnail", ThumbnailWidget)
         action_panel.show_for_mod(mod)
         if mod is not None:
             hint.display = False
+            placeholder = mod.mod_info.mod_name if mod.mod_info and mod.mod_info.mod_name else "(no name)"
+            thumbnail.set_image(None, placeholder=placeholder)
+            thumbnail.display = True
+            if self._thumbnail_task and not self._thumbnail_task.done():
+                self._thumbnail_task.cancel()
+            self._thumbnail_task = asyncio.ensure_future(self._load_thumbnail(mod))
         else:
             hint.display = True
+            thumbnail.display = False
+
+    async def _load_thumbnail(self, mod: Mod) -> None:
+        try:
+            await self.app.mod_service._ensure_mod_data(mod)
+            url = mod.mod_data.ui_image_source_link if mod.mod_data else None
+            name = mod.mod_info.mod_name if mod.mod_info else ""
+            if not url or not name:
+                return
+            svc = self._image_service
+            if svc is None:
+                return
+            cache_path = await svc.fetch_thumbnail(url, name)
+            if cache_path is None:
+                return
+            png_data, w, h = ThumbnailService.load_and_resize(cache_path)
+            thumbnail = self.query_one("#mod-thumbnail", ThumbnailWidget)
+            thumbnail.set_image(png_data, w=w, h=h)
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            logger.exception("Failed to load thumbnail")
 
     async def _action_wrapper(self, action_fn):
         try:
@@ -203,8 +250,11 @@ class HomeScreen(Screen):
         opts = self.app.options_service.get_options()
         try:
             await self.app.mod_service.ensure_gentool_installed(opts.install_method)
-            self.app.mod_service.install_mod(name, opts.install_method)
-            self.notify(f"{name} installed", severity="information")
+            replaced = self.app.mod_service.install_mod(name, opts.install_method)
+            if replaced:
+                self.notify(f"Replaced {replaced} with {name}", severity="information")
+            else:
+                self.notify(f"{name} installed", severity="information")
         except Exception as e:
             logger.exception("Install failed")
             self.notify(f"Install failed: {e}", severity="error")
