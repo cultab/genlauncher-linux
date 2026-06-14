@@ -17,7 +17,6 @@ dependencies = [
     "pyyaml",
     "platformdirs",
     "Pillow",
-    "rich-pixels",
 ]
 
 [project.optional-dependencies]

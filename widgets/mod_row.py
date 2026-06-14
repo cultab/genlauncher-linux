@@ -7,7 +7,7 @@ from textual.containers import Horizontal
 from textual.widgets import Button, Label
 
 from genlauncher_tui.models.mod import Mod
-from genlauncher_tui.widgets.thumbnail_cell import ThumbnailCell
+from genlauncher_tui.widgets.thumbnail import ThumbnailWidget
 
 
 def _format_size(size_bytes: int) -> str:
@@ -25,7 +25,7 @@ class ModRow(Horizontal):
         super().__init__(*args, **kwargs)
         self._mod = mod
         self._index = index
-        self._thumb: ThumbnailCell | None = None
+        self._thumb: ThumbnailWidget | None = None
 
     def compose(self) -> ComposeResult:
         mod = self._mod
@@ -41,7 +41,7 @@ class ModRow(Horizontal):
             status = "[grey]Not downloaded[/]"
         size_str = _format_size(mod.total_size)
 
-        self._thumb = ThumbnailCell(placeholder=name, classes="row-thumbnail", id=f"thumb-{self._index}")
+        self._thumb = ThumbnailWidget(placeholder=name, classes="row-thumbnail", id=f"thumb-{self._index}")
         yield self._thumb
         yield Label(name, classes="row-name", id=f"name-{self._index}")
         yield Label(ver, classes="row-version", id=f"ver-{self._index}")
@@ -85,7 +85,7 @@ class ModRow(Horizontal):
         self._set_button_visibility()
 
     @property
-    def thumbnail_cell(self) -> Optional[ThumbnailCell]:
+    def thumbnail_cell(self) -> Optional[ThumbnailWidget]:
         return self._thumb
 
     def mod(self) -> Mod:

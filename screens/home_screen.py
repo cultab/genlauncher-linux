@@ -21,7 +21,7 @@ from genlauncher_tui.services.steam_service import SteamService
 from genlauncher_tui.widgets.key_hints import KeyHints
 from genlauncher_tui.widgets.mod_row import ModRow
 from genlauncher_tui.widgets.status_panel import StatusPanel
-from genlauncher_tui.widgets.thumbnail_cell import ThumbnailCell
+from genlauncher_tui.widgets.thumbnail import ThumbnailWidget
 
 if TYPE_CHECKING:
     from genlauncher_tui.app import GenLauncherApp
@@ -48,7 +48,7 @@ class HomeScreen(Screen):
         self._image_service: ThumbnailService | None = None
         self._thumbnail_task: asyncio.Task | None = None
         self._thumbnail_cache: dict[str, tuple[bytes, int, int]] = {}
-        self._thumb_refs: dict[str, ThumbnailCell] = {}
+        self._thumb_refs: dict[str, ThumbnailWidget] = {}
 
     def compose(self) -> ComposeResult:
         yield Header()

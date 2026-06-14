@@ -19,7 +19,8 @@ python -m pytest tests/test_ui.py -v -k "test_name"  # single UI test
 - **`services/s3_service.py`** — AWS Signature V4 HMAC-SHA256 for MinIO auth. Credentials hardcoded (`GEN_INS_A_PKEY`, `GEN_INS_A_SKEY`). URL-encodes slashes as `%2F` in Canonical Query String via `urlencode(quote_via=...)`.
 - **`logging_setup.py`** — RotatingFileHandler (1 MB, 3 backups), timestamped filenames (`genlauncher_YYYYMMDD_HHMMSS.log`), root logger at WARNING to silence httpx noise.
 - **Screens** (`screens/`): `HomeScreen` (main mod table + actions), `AddModScreen` (repo browser), `OptionsScreen` (install method + Steam path), `CreditsScreen`, `HelpScreen`.
-- **Widgets** (`widgets/`): `ModActionPanel` (download/install/uninstall buttons), `StatusPanel` (GenTool/modded launcher/game path), `KeyHints` (keyboard shortcut legend).
+- **Widgets** (`widgets/`): `ModActionPanel` (download/install/uninstall buttons), `StatusPanel` (GenTool/modded launcher/game path), `KeyHints` (keyboard shortcut legend), `ThumbnailWidget` (3-tier: Kitty → iTerm2 → half-block).
+- **ThumbnailWidget** (`widgets/thumbnail.py`) — 3-tier rendering: Kitty (`w={cells_w}c` cells), iTerm2 (`width={pct}%`), half-block (`▀` fg/bg). CSS: `.row-thumbnail { width: 35% }`.
 - **Styles** (`styles/`): `app.tcss` — Textual CSS for the entire UI.
 - **Data models** (`models/`): `Mod`, `ModData` (extends `ModificationReposVersion`), `LauncherOptions`, `InstallationStatus`.
 
@@ -37,8 +38,8 @@ python -m pytest tests/test_ui.py -v -k "test_name"  # single UI test
 
 ## Testing
 
-- 125 tests across 6 files: `test_models.py`, `test_services.py`, `test_ui.py`, `test_entry_point.py`, `test_image_service.py`, `test_thumbnail_widget.py`.
-- Run targeted suites during iteration (e.g. `tests/test_thumbnail_widget.py`), full suite only before commits.
+- 130 tests across 6 files: `test_models.py`, `test_services.py`, `test_ui.py`, `test_entry_point.py`, `test_image_service.py`, `test_thumbnail_widget.py`.
+- Run targeted suites during iteration (e.g. `tests/test_thumbnail_widget.py`), full suite only before commits. Do NOT run full suite for trivial style changes.
 - `conftest.py` patches `SteamService.get_mod_dir` to a temp dir for every test — tests never touch real user data.
 - `test_download_and_install_full_flow` is the slowest (actual S3 HTTP + file I/O).
 - Archive extraction tests (`test_extract_7z_bad_file`, `test_extract_rar_bad_file`) require `py7zr` / `rarfile` from `[archive]` extras.
