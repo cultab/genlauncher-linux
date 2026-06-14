@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
@@ -10,11 +10,14 @@ from textual.widgets import Button, Label, Input, RadioSet, RadioButton, Header,
 from genlauncher_tui.models.enums import InstallMethod
 from genlauncher_tui.models.options import LauncherOptions
 
+if TYPE_CHECKING:
+    from genlauncher_tui.app import GenLauncherApp
+
 
 class OptionsScreen(Screen):
     @property
-    def app(self) -> Any:
-        return super().app
+    def app(self) -> GenLauncherApp:
+        return super().app  # type: ignore[return-value]
 
     def compose(self) -> ComposeResult:
         yield Header()

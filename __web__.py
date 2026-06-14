@@ -1,6 +1,7 @@
 """Script to serve GenLauncher TUI over the web via textual serve."""
 from __future__ import annotations
 
+import sys
 import webbrowser
 
 HOST = "localhost"
@@ -12,7 +13,7 @@ def main():
 
     webbrowser.open(f"http://{HOST}:{PORT}")
     server = Server(
-        "/usr/bin/python3 -m genlauncher_tui",
+        f"{sys.executable} -m genlauncher_tui",
         host=HOST,
         port=PORT,
     )

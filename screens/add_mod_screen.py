@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import TYPE_CHECKING
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -12,14 +13,16 @@ from textual.widgets import DataTable, Button, Label, LoadingIndicator, Header, 
 
 from genlauncher_tui.models.repo import ModAddonsAndPatches, ReposModsData
 
+if TYPE_CHECKING:
+    from genlauncher_tui.app import GenLauncherApp
 
 logger = logging.getLogger(__name__)
 
 
 class AddModScreen(Screen):
     @property
-    def app(self) -> Any:
-        return super().app
+    def app(self) -> GenLauncherApp:
+        return super().app  # type: ignore[return-value]
 
     BINDINGS = [
         Binding("escape", "back", "Back"),
@@ -96,7 +99,7 @@ class AddModScreen(Screen):
         if event.button.id == "add-mod-btn":
             self._add_current_mod()
         elif event.button.id == "retry-btn":
-            asyncio.ensure_future(self._retry_fetch())
+            asyncio.create_task(self._retry_fetch())
         elif event.button.id == "back-btn":
             self.action_back()
 

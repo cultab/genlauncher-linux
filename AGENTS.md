@@ -32,7 +32,7 @@ python -m pytest tests/test_ui.py -v -k "test_name"  # single UI test
 - Use `from __future__ import annotations` at top of every file.
 - DO NOT add comments unless the user explicitly asks.
 - Use `Optional[X]` or `X | None` consistently — pyrightconfig has `typeCheckingMode: basic`.
-- Screens needing to access app services must define a typed `app` property override (see `models/mod.py:9-10` for `TYPE_CHECKING` pattern).
+- Screens needing to access app services must define a typed `app` property override using `TYPE_CHECKING` (see `screens/home_screen.py` for the pattern).
 - S3 service uses `_signed_get()` wrapper — never call `self._client.get()` directly for S3 URLs.
 
 ## Testing
@@ -52,7 +52,7 @@ python -m pytest tests/test_ui.py -v -k "test_name"  # single UI test
 ## Gotchas
 
 - S3 MinIO port in host → `http://` scheme; no port → `https://`. Logic in `s3_service.py:45-48`.
-- `install_mod` calls `ensure_gentool_installed` (async) before copying, and `_ensure_modded_launcher_installed` at both start and end.
+- `install_mod` expects `ensure_gentool_installed` to have been called beforehand. `_ensure_modded_launcher_installed` is called inside `install_mod` before copying files.
 - Only one mod can be installed at a time (C# parity guard in `mod_service.py`).
 - Contra S3 files have `!ContraXBeta2_` prefix — `fix_mod_filename` does NOT strip it, only swaps `.gib`→`.big`.
 - End-to-end Contra download+install+launch requires Steam + Zero Hour installed (not present on build machine).

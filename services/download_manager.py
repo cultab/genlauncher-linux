@@ -4,7 +4,6 @@ import hashlib
 import logging
 import os
 import zipfile
-from pathlib import Path
 from typing import Callable, Optional
 
 import httpx
@@ -53,26 +52,27 @@ async def download_bytes(
             return b"".join(chunks), ct
 
 
+def _list_files_recursively(dest_dir: str) -> list[str]:
+    extracted = []
+    for root, dirs, files in os.walk(dest_dir):
+        for f in files:
+            extracted.append(os.path.join(root, f))
+    return extracted
+
+
 def extract_archive(file_path: str, dest_dir: str) -> list[str]:
     os.makedirs(dest_dir, exist_ok=True)
-    extracted = []
     ext = os.path.splitext(file_path)[1].lower()
 
     if ext == ".zip":
         with zipfile.ZipFile(file_path) as zf:
             zf.extractall(dest_dir)
-        for root, dirs, files in os.walk(dest_dir):
-            for f in files:
-                extracted.append(os.path.join(root, f))
 
     elif ext == ".7z":
         try:
             import py7zr
             with py7zr.SevenZipFile(file_path, mode="r") as sz:
                 sz.extractall(path=dest_dir)
-            for root, dirs, files in os.walk(dest_dir):
-                for f in files:
-                    extracted.append(os.path.join(root, f))
         except ImportError:
             raise RuntimeError("py7zr is required to extract .7z files: pip install py7zr")
 
@@ -81,12 +81,10 @@ def extract_archive(file_path: str, dest_dir: str) -> list[str]:
             import rarfile
             with rarfile.RarFile(file_path) as rf:
                 rf.extractall(dest_dir)
-            for root, dirs, files in os.walk(dest_dir):
-                for f in files:
-                    extracted.append(os.path.join(root, f))
         except ImportError:
             raise RuntimeError("rarfile is required to extract .rar files: pip install rarfile")
 
+    extracted = _list_files_recursively(dest_dir)
     os.unlink(file_path)
     return extracted
 

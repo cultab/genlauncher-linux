@@ -3,7 +3,9 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import hmac
+import os
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import parse_qsl, quote, urlencode, urlparse
@@ -12,8 +14,8 @@ import httpx
 
 from genlauncher_tui.models.mod import Mod
 
-GEN_INS_A_PKEY = "S58TYR9ISEZV8PBP8QG1"
-GEN_INS_A_SKEY = "b2RU1oqVU5toJRnb4gODrXX8sBSgoLcHRX6qPWxj"
+_GEN_INS_A_PKEY = os.environ.get("GEN_INS_A_PKEY", "S58TYR9ISEZV8PBP8QG1")
+_GEN_INS_A_SKEY = os.environ.get("GEN_INS_A_SKEY", "b2RU1oqVU5toJRnb4gODrXX8sBSgoLcHRX6qPWxj")
 
 
 @dataclasses.dataclass
@@ -115,8 +117,8 @@ class S3StorageService:
         md = mod.mod_data
         if not md:
             return []
-        key = (md.s3_host_public_key or GEN_INS_A_PKEY).strip()
-        secret = (md.s3_host_secret_key or GEN_INS_A_SKEY).strip()
+        key = (md.s3_host_public_key or _GEN_INS_A_PKEY).strip()
+        secret = (md.s3_host_secret_key or _GEN_INS_A_SKEY).strip()
         host = md.s3_host_link or ""
         bucket = md.s3_bucket_name or ""
         folder = md.s3_folder_name or ""
@@ -128,24 +130,22 @@ class S3StorageService:
 
         def _parse_listing(xml_text: str) -> list[ModificationFileInfo]:
             result = []
-            for block in re.finditer(r"<Contents>(.*?)</Contents>", xml_text, re.DOTALL):
-                content = block.group(1)
-                km = re.search(r"<Key>(.*?)</Key>", content)
-                sm = re.search(r"<Size>(\d+)</Size>", content)
-                em = re.search(r"<ETag>(.*?)</ETag>", content)
-                if not (km and sm and em):
+            root = ET.fromstring(xml_text)
+            ns = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
+            for contents in root.findall("s3:Contents", ns):
+                key_el = contents.find("s3:Key", ns)
+                size_el = contents.find("s3:Size", ns)
+                etag_el = contents.find("s3:ETag", ns)
+                if key_el is None or size_el is None or etag_el is None:
                     continue
-                key_name = km.group(1)
-                size = int(sm.group(1))
-                raw_etag = em.group(1)
+                key_name = key_el.text or ""
                 rel_path = key_name.replace(folder + "/", "", 1) if folder else key_name
                 if not rel_path:
                     continue
-                etag = raw_etag.replace('"', "").replace("&#34;", "").strip()
                 result.append(ModificationFileInfo(
                     file_name=rel_path,
-                    hash=etag,
-                    size=size,
+                    hash=(etag_el.text or "").replace('"', "").replace("&#34;", "").strip(),
+                    size=int(size_el.text or "0"),
                 ))
             return result
 
@@ -163,8 +163,8 @@ class S3StorageService:
         md = mod.mod_data
         if not md:
             raise ValueError("No mod data")
-        key = (md.s3_host_public_key or GEN_INS_A_PKEY).strip()
-        secret = (md.s3_host_secret_key or GEN_INS_A_SKEY).strip()
+        key = (md.s3_host_public_key or _GEN_INS_A_PKEY).strip()
+        secret = (md.s3_host_secret_key or _GEN_INS_A_SKEY).strip()
         host = md.s3_host_link or ""
         bucket = md.s3_bucket_name or ""
         folder = md.s3_folder_name or ""

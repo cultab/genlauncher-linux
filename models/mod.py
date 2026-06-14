@@ -33,27 +33,27 @@ class ModificationReposVersion:
     def __eq__(self, other):
         if not isinstance(other, ModificationReposVersion):
             return NotImplemented
-        return self.name.lower() == other.name.lower()
+        return (self.name.lower(), self.version.lower()) == (other.name.lower(), other.version.lower())
 
     def __hash__(self):
-        return hash(self.name.lower())
+        return hash((self.name.lower(), self.version.lower()))
 
     def __str__(self):
         return self.name
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(eq=False)
 class ModData(ModificationReposVersion):
     is_selected: bool = False
     installed: bool = False
 
     def __eq__(self, other):
-        if not isinstance(other, ModData):
+        if not isinstance(other, ModificationReposVersion):
             return NotImplemented
-        return (self.name + self.version).lower() == (other.name + other.version).lower()
+        return (self.name.lower(), self.version.lower()) == (other.name.lower(), other.version.lower())
 
     def __hash__(self):
-        return hash((self.name + self.version).lower())
+        return hash((self.name.lower(), self.version.lower()))
 
     def compare_to(self, other: ModData) -> int:
         self_digits = "".join(c for c in self.version if c.isdigit())

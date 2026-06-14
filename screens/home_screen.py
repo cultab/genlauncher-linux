@@ -4,7 +4,9 @@ import asyncio
 import logging
 import subprocess
 import sys
-from textual.app import App, ComposeResult
+from typing import TYPE_CHECKING
+
+from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
@@ -21,14 +23,16 @@ from genlauncher_tui.widgets.key_hints import KeyHints
 from genlauncher_tui.widgets.status_panel import StatusPanel
 from genlauncher_tui.widgets.thumbnail import ThumbnailWidget, supports_image_protocol
 
+if TYPE_CHECKING:
+    from genlauncher_tui.app import GenLauncherApp
 
 logger = logging.getLogger(__name__)
 
 
 class HomeScreen(Screen):
     @property
-    def app(self) -> App:
-        return super().app
+    def app(self) -> GenLauncherApp:
+        return super().app  # type: ignore[return-value]
 
     BINDINGS = [
         Binding("f1", "show_help", "Help"),
@@ -199,7 +203,7 @@ class HomeScreen(Screen):
             thumbnail.display = True
             if self._thumbnail_task and not self._thumbnail_task.done():
                 self._thumbnail_task.cancel()
-            self._thumbnail_task = asyncio.ensure_future(self._load_thumbnail(mod))
+            self._thumbnail_task = asyncio.create_task(self._load_thumbnail(mod))
         else:
             hint.display = True
             thumbnail.display = False
@@ -330,19 +334,19 @@ class HomeScreen(Screen):
             self.app.exit()
         elif event.button.id == "act-download":
             if self.selected_mod:
-                asyncio.ensure_future(self._do_download(self.selected_mod))
+                asyncio.create_task(self._do_download(self.selected_mod))
         elif event.button.id == "act-install":
             if self.selected_mod:
-                asyncio.ensure_future(self._action_wrapper(lambda m=self.selected_mod: self._do_install(m)))
+                asyncio.create_task(self._action_wrapper(lambda m=self.selected_mod: self._do_install(m)))
         elif event.button.id == "act-uninstall":
             if self.selected_mod:
-                asyncio.ensure_future(self._action_wrapper(lambda m=self.selected_mod: self._do_uninstall(m)))
+                asyncio.create_task(self._action_wrapper(lambda m=self.selected_mod: self._do_uninstall(m)))
         elif event.button.id == "act-delete":
             if self.selected_mod:
-                asyncio.ensure_future(self._action_wrapper(lambda m=self.selected_mod: self._do_delete(m)))
+                asyncio.create_task(self._action_wrapper(lambda m=self.selected_mod: self._do_delete(m)))
         elif event.button.id == "act-remove":
             if self.selected_mod:
-                asyncio.ensure_future(self._action_wrapper(lambda m=self.selected_mod: self._do_remove(m)))
+                asyncio.create_task(self._action_wrapper(lambda m=self.selected_mod: self._do_remove(m)))
 
 
 def _format_size(size_bytes: int) -> str:

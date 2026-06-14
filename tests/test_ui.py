@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from genlauncher_tui.app import GenLauncherApp
-from genlauncher_tui.services.mod_service import MODLIST_FILE
+from genlauncher_tui.services.mod_utils import MODLIST_FILE
 from genlauncher_tui.services.steam_service import SteamService
 
 

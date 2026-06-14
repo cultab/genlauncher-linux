@@ -19,7 +19,8 @@ from genlauncher_tui.services.download_manager import (
     get_md5,
     get_total_size,
 )
-from genlauncher_tui.services.mod_service import ModService, MODLIST_FILE, _mime_to_ext
+from genlauncher_tui.services.mod_service import ModService
+from genlauncher_tui.services.mod_utils import MODLIST_FILE, mime_to_ext
 from genlauncher_tui.services.options_service import OptionsService
 from genlauncher_tui.services.repo_service import RepoService
 from genlauncher_tui.services.symlink_service import SymLinkService
@@ -392,15 +393,15 @@ class TestDownloadManagerExtraction:
                 extract_archive(dummy, dest)
 
     def test_mime_to_ext_variants(self):
-        assert _mime_to_ext("application/zip") == ".zip"
-        assert _mime_to_ext("application/x-7z-compressed") == ".7z"
-        assert _mime_to_ext("application/x-rar-compressed") == ".rar"
-        assert _mime_to_ext("application/gzip") == ".gz"
-        assert _mime_to_ext("application/x-tar") == ".tar"
-        assert _mime_to_ext("unknown/thing") == ".zip"
-        assert _mime_to_ext("something/zip") == ".zip"
-        assert _mime_to_ext("something/7-zip") == ".7z"
-        assert _mime_to_ext("something/rar") == ".rar"
+        assert mime_to_ext("application/zip") == ".zip"
+        assert mime_to_ext("application/x-7z-compressed") == ".7z"
+        assert mime_to_ext("application/x-rar-compressed") == ".rar"
+        assert mime_to_ext("application/gzip") == ".gz"
+        assert mime_to_ext("application/x-tar") == ".tar"
+        assert mime_to_ext("unknown/thing") == ".zip"
+        assert mime_to_ext("something/zip") == ".zip"
+        assert mime_to_ext("something/7-zip") == ".7z"
+        assert mime_to_ext("something/rar") == ".rar"
 
 
 class TestModServiceInstall:

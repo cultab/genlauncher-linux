@@ -1,15 +1,13 @@
 {
     "include": ["."],
-    "exclude": ["tests", "**/__pycache__", "build", "*.egg-info"],
+    "exclude": ["tests", "build", "*.egg-info"],
     "typeCheckingMode": "basic",
     "reportAttributeAccessIssue": false,
     "reportMissingModuleSource": false,
     "reportPrivateImportUsage": false,
-    "reportUnusedImport": false,
-    "reportUnusedVariable": false,
     "reportWildcardImportFromLibrary": false,
+    "reportMissingImports": "information",
     "useLibraryCodeForTypes": false,
     "extraPaths": [".."],
-    "reportMissingImports": "none",
     "pythonVersion": "3.10"
 }
