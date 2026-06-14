@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from textual.app import ComposeResult
 from textual.widgets import Label, Static
@@ -27,7 +28,9 @@ class StatusPanel(Static):
         ml.update(f"Modded Launcher: {'[green]● Installed[/]' if status.modded_launcher else '[red]● Not installed[/]'}")
         try:
             path = SteamService.get_game_install_dir()
-            sp.update(f"Game: {path}")
+            home = os.path.expanduser("~")
+            display = path.replace(home, "~", 1)
+            sp.update(f"Game: {display}")
         except Exception:
             logger.warning("Could not determine game install path", exc_info=True)
             sp.update("[red]Game: Not found[/]")

@@ -137,6 +137,11 @@ Button {
     width: 1fr;
 }
 
+#gen-tool-status, #modded-launcher-status, #steam-path-label {
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
 OptionsScreen Input {
     width: 1fr;
 }
