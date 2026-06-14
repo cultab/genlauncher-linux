@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import io
+import json
 import logging
 import os
+import time
 
 import httpx
 from PIL import Image
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 MAX_THUMB_WIDTH = 320
 MAX_THUMB_HEIGHT = 100
+RETRY_AFTER_SECONDS = 300
 
 
 class ThumbnailService:
@@ -21,8 +24,35 @@ class ThumbnailService:
             from platformdirs import user_cache_dir
             cache_dir = os.path.join(user_cache_dir("genlauncher_tui"), "thumbnails")
         self._cache_dir = cache_dir
-        self._failed_urls: set[str] = set()
+        self._failed_urls: dict[str, float] = {}
         os.makedirs(self._cache_dir, exist_ok=True)
+        self._load_failed_urls()
+
+    def _failed_urls_path(self) -> str:
+        return os.path.join(self._cache_dir, "failed_urls.json")
+
+    def _load_failed_urls(self):
+        path = self._failed_urls_path()
+        if not os.path.isfile(path):
+            return
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            now = time.time()
+            self._failed_urls = {
+                url: ts for url, ts in data.items()
+                if now - ts < RETRY_AFTER_SECONDS
+            }
+        except Exception:
+            pass
+
+    def _save_failed_urls(self):
+        try:
+            os.makedirs(self._cache_dir, exist_ok=True)
+            with open(self._failed_urls_path(), "w") as f:
+                json.dump(self._failed_urls, f)
+        except Exception:
+            pass
 
     def _cache_path(self, name: str) -> str:
         return os.path.join(self._cache_dir, f"{standard_mod_name(name)}.png")
@@ -43,13 +73,15 @@ class ThumbnailService:
                 resp.raise_for_status()
             data = resp.content
             if not isinstance(data, bytes):
-                self._failed_urls.add(url)
+                self._failed_urls[url] = time.time()
+                self._save_failed_urls()
                 return None
             with open(cache_path, "wb") as f:
                 f.write(data)
             return cache_path
         except Exception:
-            self._failed_urls.add(url)
+            self._failed_urls[url] = time.time()
+            self._save_failed_urls()
             logger.exception("Failed to download thumbnail for %s", name)
             return None
 

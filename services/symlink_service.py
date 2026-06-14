@@ -40,7 +40,7 @@ class SymLinkService:
     def create_symlink(link_file: str, source_file: str) -> bool:
         if not SymLinkService.is_symlinks_supported():
             return False
-        if os.path.exists(link_file):
+        if os.path.islink(link_file) or os.path.exists(link_file):
             if os.path.islink(link_file):
                 os.unlink(link_file)
             else:

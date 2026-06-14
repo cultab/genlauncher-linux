@@ -12,7 +12,7 @@ from textual.screen import Screen
 from textual.timer import Timer
 from textual.widgets import DataTable, Label, Button, ProgressBar, Static
 
-from genlauncher_tui.models.mod import Mod
+from genlauncher_tui.models.mod import Mod, standard_mod_name
 from genlauncher_tui.models.options import InstallationStatus
 from genlauncher_tui.services.image_service import ThumbnailService
 from genlauncher_tui.services.steam_service import SteamService
@@ -44,6 +44,7 @@ class HomeScreen(Screen):
         self._poll_task: Timer | None = None
         self._image_service: ThumbnailService | None = None
         self._thumbnail_task: asyncio.Task | None = None
+        self._thumbnail_fail_warned: set[str] = set()
 
     def compose(self) -> ComposeResult:
         app = self.app
@@ -215,6 +216,14 @@ class HomeScreen(Screen):
                 return
             cache_path = await svc.fetch_thumbnail(url, name)
             if cache_path is None:
+                key = standard_mod_name(name)
+                if key not in self._thumbnail_fail_warned:
+                    self._thumbnail_fail_warned.add(key)
+                    self.notify(
+                        f"Could not fetch thumbnail for {name} — image host may be rate-limiting",
+                        severity="warning",
+                        timeout=3,
+                    )
                 return
             png_data, w, h = ThumbnailService.load_and_resize(cache_path)
             thumbnail = self.query_one("#mod-thumbnail", ThumbnailWidget)
