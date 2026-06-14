@@ -7,7 +7,7 @@ import yaml
 
 from genlauncher_tui.config import CONFIG
 from genlauncher_tui.models.enums import GameType
-from genlauncher_tui.models.repo import ReposModsData
+from genlauncher_tui.models.repo import AdvertisingData, ModAddonsAndPatches, ReposModsData
 
 
 class RepoService:
@@ -31,7 +31,6 @@ class RepoService:
             vulkan_repos_data=raw.get("VulkanReposData", ""),
         )
         for entry in raw.get("modDatas", []):
-            from genlauncher_tui.models.repo import ModAddonsAndPatches
             m = ModAddonsAndPatches(
                 mod_id=entry.get("ModId", 0),
                 mod_name=entry.get("ModName", ""),
@@ -45,7 +44,6 @@ class RepoService:
         data.original_game_addons = raw.get("originalGameAddons", [])
         data.original_game_patches = raw.get("originalGamePatches", [])
         for adv in raw.get("AdvData", []):
-            from genlauncher_tui.models.repo import AdvertisingData
             if data.adv_data is not None:
                 data.adv_data.append(AdvertisingData(
                     mod_name=adv.get("ModName", ""),

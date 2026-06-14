@@ -13,9 +13,10 @@ from genlauncher_tui.models.mod import standard_mod_name
 
 logger = logging.getLogger(__name__)
 
-MAX_THUMB_WIDTH = 320
-MAX_THUMB_HEIGHT = 100
+MAX_THUMB_WIDTH = 640
+MAX_THUMB_HEIGHT = 200
 RETRY_AFTER_SECONDS = 300
+_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 
 
 class ThumbnailService:
@@ -68,7 +69,7 @@ class ThumbnailService:
         if os.path.isfile(cache_path):
             return cache_path
         try:
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers={"User-Agent": _USER_AGENT}) as client:
                 resp = await client.get(url)
                 resp.raise_for_status()
             data = resp.content

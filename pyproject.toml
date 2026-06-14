@@ -17,11 +17,11 @@ dependencies = [
     "pyyaml",
     "platformdirs",
     "Pillow",
-    "rich-pixels",
 ]
 
 [project.optional-dependencies]
 archive = ["py7zr", "rarfile"]
+web = ["textual-serve"]
 
 [project.scripts]
 genlauncher = "genlauncher_tui.__main__:main"

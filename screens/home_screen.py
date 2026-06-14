@@ -4,31 +4,35 @@ import asyncio
 import logging
 import subprocess
 import sys
-from textual.app import App, ComposeResult
+from typing import TYPE_CHECKING
+
+from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.screen import Screen
 from textual.timer import Timer
-from textual.widgets import DataTable, Label, Button, ProgressBar, Static
+from textual.widgets import Button, Header, Label, ListItem, ListView, ProgressBar
 
 from genlauncher_tui.models.mod import Mod, standard_mod_name
 from genlauncher_tui.models.options import InstallationStatus
 from genlauncher_tui.services.image_service import ThumbnailService
 from genlauncher_tui.services.steam_service import SteamService
-from genlauncher_tui.widgets.action_panel import ModActionPanel
 from genlauncher_tui.widgets.key_hints import KeyHints
+from genlauncher_tui.widgets.mod_row import ModRow
 from genlauncher_tui.widgets.status_panel import StatusPanel
-from genlauncher_tui.widgets.thumbnail import ThumbnailWidget, supports_image_protocol
+from genlauncher_tui.widgets.thumbnail import ThumbnailWidget
 
+if TYPE_CHECKING:
+    from genlauncher_tui.app import GenLauncherApp
 
 logger = logging.getLogger(__name__)
 
 
 class HomeScreen(Screen):
     @property
-    def app(self) -> App:
-        return super().app
+    def app(self) -> GenLauncherApp:
+        return super().app  # type: ignore[return-value]
 
     BINDINGS = [
         Binding("f1", "show_help", "Help"),
@@ -37,35 +41,31 @@ class HomeScreen(Screen):
 
     added_mods: reactive[list[Mod]] = reactive([])
     install_status: reactive[InstallationStatus] = reactive(InstallationStatus())
-    selected_mod: reactive[Mod | None] = reactive(None)
 
     def __init__(self):
         super().__init__()
         self._poll_task: Timer | None = None
         self._image_service: ThumbnailService | None = None
         self._thumbnail_task: asyncio.Task | None = None
-        self._thumbnail_fail_warned: set[str] = set()
+        self._thumbnail_cache: dict[str, tuple[bytes, int, int]] = {}
+        self._thumb_refs: dict[str, ThumbnailWidget] = {}
 
     def compose(self) -> ComposeResult:
-        app = self.app
+        yield Header()
+        with Horizontal(classes="toolbar"):
+            yield Button("Launch Game", id="launch-btn", variant="primary")
+            yield Button("Open Folder", id="open-folder-btn")
+            yield Button("Add Mods", id="add-mod-btn")
+            yield Button("Options", id="options-btn")
+            yield Button("Help (F1)", id="help-btn")
+            yield Button("Credits", id="credits-btn")
+            yield Button("Exit", id="exit-btn", variant="error")
         with Horizontal():
-            with Vertical(classes="left-panel"):
-                yield DataTable(id="mod-table", cursor_type="row")
-                yield Label("Select a mod row for actions", id="hint-text")
-                yield ThumbnailWidget(id="mod-thumbnail")
-                yield ModActionPanel(id="mod-actions")
+            with Vertical(classes="mod-list-panel"):
+                yield Label("No mods added — press a to add mods", id="empty-list-label")
+                yield ListView(id="mod-list")
             with Vertical(classes="right-panel"):
-                yield Label("Quick Actions", classes="section-header")
-                yield Button("Launch Game", id="launch-btn", variant="primary")
-                yield Button("Open Game Folder", id="open-folder-btn")
-                yield Button("Add Mods", id="add-mod-btn")
-                yield Button("Options", id="options-btn")
-                yield Button("Help (F1)", id="help-btn")
-                yield Button("Credits", id="credits-btn")
-                yield Button("Exit", id="exit-btn", variant="error")
-                yield Static("", classes="separator")
                 yield StatusPanel(id="status-panel")
-                yield Static("", classes="separator")
                 yield KeyHints(self, id="key-hints")
         with Horizontal(id="download-bar"):
             yield ProgressBar(id="download-progress", show_eta=False, show_percentage=True)
@@ -75,22 +75,11 @@ class HomeScreen(Screen):
 
     def on_mount(self) -> None:
         self._image_service = ThumbnailService()
-        if not supports_image_protocol():
-            self.notify(
-                "Terminal does not support image display. Using text-based thumbnails.",
-                timeout=5,
-                severity="warning",
-            )
-        table = self.query_one("#mod-table", DataTable)
-        table.columns.clear()
-        table.add_column("Mod", width=None)
-        table.add_column("Version", width=None)
-        table.add_column("Status", width=None)
-        table.add_column("Size", width=None)
         self._refresh_mods()
         self._refresh_status()
         self._poll_task = self.set_interval(2.0, self._poll_status)
-        table.focus()
+        list_view = self.query_one("#mod-list", ListView)
+        list_view.focus()
 
     def on_unmount(self) -> None:
         if self._thumbnail_task and not self._thumbnail_task.done():
@@ -108,30 +97,23 @@ class HomeScreen(Screen):
         app = self.app
         mods = app.mod_service.get_added_mods()
         self.added_mods = mods
-        table = self.query_one("#mod-table", DataTable)
-        hint = self.query_one("#hint-text", Label)
-        table.clear()
-        if mods:
-            hint.update("Select a row for actions")
-        else:
-            hint.update("Press a or click Add Mods")
-        for mod in mods:
-            name = mod.mod_info.mod_name if mod.mod_info else "?"
-            ver = mod.downloaded_version or "-"
-            if mod.installed:
-                status = "Installed"
-            elif mod.downloading:
-                status = "Downloading..."
-            elif mod.downloaded:
-                status = "Downloaded"
-            else:
-                status = "Not downloaded"
-            size_str = _format_size(mod.total_size)
-            table.add_row(name, ver, status, size_str)
-        if mods and self.selected_mod is None:
-            self.selected_mod = mods[0]
-        elif self.selected_mod and self.selected_mod not in mods:
-            self.selected_mod = None
+        list_view = self.query_one("#mod-list", ListView)
+        empty_label = self.query_one("#empty-list-label", Label)
+        list_view.clear()
+        self._thumb_refs.clear()
+        empty = not bool(mods)
+        empty_label.display = empty
+        list_view.display = not empty
+        for i, mod in enumerate(mods):
+            row = ModRow(mod, i)
+            list_view.append(ListItem(row))
+            if mod.mod_info:
+                cell = row.thumbnail_cell
+                if cell is not None:
+                    self._thumb_refs[mod.mod_info.mod_name] = cell
+        if self._thumbnail_task and not self._thumbnail_task.done():
+            self._thumbnail_task.cancel()
+        self._thumbnail_task = asyncio.create_task(self._load_all_thumbnails(mods))
 
     def _refresh_status(self):
         app = self.app
@@ -173,75 +155,45 @@ class HomeScreen(Screen):
             fl.update("")
             bp.update("")
 
-    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-        table = self.query_one("#mod-table", DataTable)
-        row_key = event.row_key
-        if row_key is None:
-            self.selected_mod = None
-            return
-        rows = table.rows
-        if row_key not in rows:
-            self.selected_mod = None
-            return
-        idx = list(rows.keys()).index(row_key)
-        if idx < len(self.added_mods):
-            self.selected_mod = self.added_mods[idx]
-
-    def watch_selected_mod(self, mod: Mod | None) -> None:
-        action_panel = self.query_one("#mod-actions", ModActionPanel)
-        hint = self.query_one("#hint-text", Label)
-        thumbnail = self.query_one("#mod-thumbnail", ThumbnailWidget)
-        action_panel.show_for_mod(mod)
-        if mod is not None:
-            hint.display = False
-            placeholder = mod.mod_info.mod_name if mod.mod_info and mod.mod_info.mod_name else "(no name)"
-            thumbnail.set_image(None, placeholder=placeholder)
-            thumbnail.display = True
-            if self._thumbnail_task and not self._thumbnail_task.done():
-                self._thumbnail_task.cancel()
-            self._thumbnail_task = asyncio.ensure_future(self._load_thumbnail(mod))
-        else:
-            hint.display = True
-            thumbnail.display = False
-
-    async def _load_thumbnail(self, mod: Mod) -> None:
-        try:
-            await self.app.mod_service._ensure_mod_data(mod)
-            url = mod.mod_data.ui_image_source_link if mod.mod_data else None
-            name = mod.mod_info.mod_name if mod.mod_info else ""
-            if not url or not name:
-                return
-            svc = self._image_service
-            if svc is None:
-                return
-            cache_path = await svc.fetch_thumbnail(url, name)
-            if cache_path is None:
+    async def _load_all_thumbnails(self, mods: list[Mod]) -> None:
+        for mod in mods:
+            try:
+                if not mod.mod_info:
+                    continue
+                name = mod.mod_info.mod_name
                 key = standard_mod_name(name)
-                if key not in self._thumbnail_fail_warned:
-                    self._thumbnail_fail_warned.add(key)
-                    self.notify(
-                        f"Could not fetch thumbnail for {name} — image host may be rate-limiting",
-                        severity="warning",
-                        timeout=3,
-                    )
-                return
-            png_data, w, h = ThumbnailService.load_and_resize(cache_path)
-            thumbnail = self.query_one("#mod-thumbnail", ThumbnailWidget)
-            thumbnail.set_image(png_data, w=w, h=h)
-        except asyncio.CancelledError:
-            pass
-        except Exception:
-            logger.exception("Failed to load thumbnail")
+                if key in self._thumbnail_cache:
+                    png_data, w, h = self._thumbnail_cache[key]
+                    self._update_row_thumbnail(name, png_data, w, h)
+                    continue
+                try:
+                    await self.app.mod_service._ensure_mod_data(mod)
+                except Exception:
+                    continue
+                url = mod.mod_data.ui_image_source_link if mod.mod_data else None
+                if not url:
+                    continue
+                svc = self._image_service
+                if svc is None:
+                    continue
+                try:
+                    cache_path = await svc.fetch_thumbnail(url, name)
+                except Exception:
+                    continue
+                if cache_path is None:
+                    continue
+                png_data, w, h = ThumbnailService.load_and_resize(cache_path)
+                self._thumbnail_cache[key] = (png_data, w, h)
+                self._update_row_thumbnail(name, png_data, w, h)
+            except Exception:
+                pass
 
-    async def _action_wrapper(self, action_fn):
-        try:
-            r = action_fn()
-            if asyncio.iscoroutine(r):
-                await r
-        except Exception as e:
-            logger.exception("Action failed")
-            self.notify(str(e), severity="error")
-        self._refresh_mods()
+    def _update_row_thumbnail(self, mod_name: str, png_data: bytes, w: int, h: int) -> None:
+        thumb = self._thumb_refs.get(mod_name)
+        if thumb is not None:
+            thumb.set_image(png_data, w=w, h=h)
+
+    # --- Action methods ---
 
     async def _do_download(self, mod: Mod):
         name = mod.mod_info.mod_name if mod.mod_info else "?"
@@ -304,10 +256,14 @@ class HomeScreen(Screen):
         self.app.push_screen(HelpScreen())
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "launch-btn":
+        btn_id = event.button.id
+        if not btn_id:
+            return
+
+        if btn_id == "launch-btn":
             import webbrowser
             webbrowser.open("steam://rungameid/2732960")
-        elif event.button.id == "open-folder-btn":
+        elif btn_id == "open-folder-btn":
             try:
                 path = SteamService.get_game_install_dir()
                 if sys.platform == "win32":
@@ -318,38 +274,42 @@ class HomeScreen(Screen):
                     subprocess.run(["xdg-open", path])
             except Exception as e:
                 self.notify(f"Failed to open folder: {e}", severity="error")
-        elif event.button.id == "add-mod-btn":
+        elif btn_id == "add-mod-btn":
             self.app.action_go_add_mod()
-        elif event.button.id == "options-btn":
+        elif btn_id == "options-btn":
             self.app.action_go_options()
-        elif event.button.id == "help-btn":
+        elif btn_id == "help-btn":
             self.action_show_help()
-        elif event.button.id == "credits-btn":
+        elif btn_id == "credits-btn":
             self.app.action_go_credits()
-        elif event.button.id == "exit-btn":
+        elif btn_id == "exit-btn":
             self.app.exit()
-        elif event.button.id == "act-download":
-            if self.selected_mod:
-                asyncio.ensure_future(self._do_download(self.selected_mod))
-        elif event.button.id == "act-install":
-            if self.selected_mod:
-                asyncio.ensure_future(self._action_wrapper(lambda m=self.selected_mod: self._do_install(m)))
-        elif event.button.id == "act-uninstall":
-            if self.selected_mod:
-                asyncio.ensure_future(self._action_wrapper(lambda m=self.selected_mod: self._do_uninstall(m)))
-        elif event.button.id == "act-delete":
-            if self.selected_mod:
-                asyncio.ensure_future(self._action_wrapper(lambda m=self.selected_mod: self._do_delete(m)))
-        elif event.button.id == "act-remove":
-            if self.selected_mod:
-                asyncio.ensure_future(self._action_wrapper(lambda m=self.selected_mod: self._do_remove(m)))
+        else:
+            self._handle_mod_action(btn_id)
 
+    def _find_mod_for_action(self, btn_id: str) -> Mod | None:
+        parts = btn_id.split("-", 1)
+        if len(parts) != 2:
+            return None
+        try:
+            idx = int(parts[1])
+        except ValueError:
+            return None
+        if 0 <= idx < len(self.added_mods):
+            return self.added_mods[idx]
+        return None
 
-def _format_size(size_bytes: int) -> str:
-    if size_bytes == 0:
-        return "-"
-    mb = size_bytes / (1024 * 1024)
-    if mb < 1024:
-        return f"{mb:.0f} MB"
-    gb = mb / 1024
-    return f"{gb:.1f} GB"
+    def _handle_mod_action(self, btn_id: str) -> None:
+        mod = self._find_mod_for_action(btn_id)
+        if mod is None:
+            return
+        if btn_id.startswith("dl-"):
+            asyncio.create_task(self._do_download(mod))
+        elif btn_id.startswith("inst-"):
+            asyncio.create_task(self._do_install(mod))
+        elif btn_id.startswith("uninst-"):
+            self._do_uninstall(mod)
+        elif btn_id.startswith("del-"):
+            self._do_delete(mod)
+        elif btn_id.startswith("rem-"):
+            self._do_remove(mod)

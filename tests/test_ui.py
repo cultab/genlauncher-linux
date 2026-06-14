@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from genlauncher_tui.app import GenLauncherApp
-from genlauncher_tui.services.mod_service import MODLIST_FILE
+from genlauncher_tui.services.mod_utils import MODLIST_FILE
 from genlauncher_tui.services.steam_service import SteamService
 
 
@@ -24,13 +24,13 @@ async def test_app_starts_on_home_screen():
 
 
 @pytest.mark.asyncio
-async def test_home_screen_has_mod_table():
+async def test_home_screen_has_mod_list():
     app = GenLauncherApp()
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
-        table = app.screen.query_one("#mod-table")
-        assert table is not None
-        assert len(table.rows) == 0, "Home table should be empty with no mods added"
+        list_view = app.screen.query_one("#mod-list")
+        assert list_view is not None
+        assert len(list_view.children) == 0, "Mod list should be empty with no mods added"
 
 
 @pytest.mark.asyncio
@@ -145,9 +145,9 @@ async def test_added_mod_shows_on_home_screen():
         await pilot.press("escape")
         await pilot.pause()
 
-        # The home screen table should now have 1 row
-        table = app.screen.query_one("#mod-table")
-        assert len(table.rows) == 1, f"Expected 1 row, got {len(table.rows)}"
+        # The home screen list should now have 1 item
+        list_view = app.screen.query_one("#mod-list")
+        assert len(list_view.children) == 1, f"Expected 1 item, got {len(list_view.children)}"
 
 
 @pytest.mark.asyncio
@@ -177,8 +177,8 @@ async def test_multiple_adds_reflect_on_home():
         await pilot.press("escape")
         await pilot.pause()
 
-        table = app.screen.query_one("#mod-table")
-        assert len(table.rows) == 2, f"Expected 2 rows, got {len(table.rows)}"
+        list_view = app.screen.query_one("#mod-list")
+        assert len(list_view.children) == 2, f"Expected 2 items, got {len(list_view.children)}"
 
 
 @pytest.mark.asyncio
@@ -202,8 +202,8 @@ async def test_home_persists_across_screen_navigation():
         await pilot.press("escape")
         await pilot.pause()
 
-        table = app.screen.query_one("#mod-table")
-        assert len(table.rows) == 2
+        list_view = app.screen.query_one("#mod-list")
+        assert len(list_view.children) == 2
 
         # Go to options and back
         await pilot.press("o")
@@ -218,8 +218,8 @@ async def test_home_persists_across_screen_navigation():
         await pilot.pause()
 
         # Home should still show 2 mods
-        table = app.screen.query_one("#mod-table")
-        assert len(table.rows) == 2, f"Expected 2 rows after navigation, got {len(table.rows)}"
+        list_view = app.screen.query_one("#mod-list")
+        assert len(list_view.children) == 2, f"Expected 2 items after navigation, got {len(list_view.children)}"
 
 
 @pytest.mark.asyncio
@@ -389,7 +389,7 @@ async def test_launch_button_exists():
 
 
 @pytest.mark.asyncio
-async def test_mod_actions_appear_on_row_select():
+async def test_mod_buttons_show_correct_states():
     app = GenLauncherApp()
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
@@ -402,39 +402,14 @@ async def test_mod_actions_appear_on_row_select():
         await pilot.press("escape")
         await pilot.pause()
 
-        table = app.screen.query_one("#mod-table")
-        assert len(table.rows) == 1
-
-        # Select the row — action buttons should appear
-        await pilot.press("enter")
-        await pilot.pause()
-
-        actions_container = app.screen.query_one("#mod-actions")
-        assert actions_container.display is True
-
-
-@pytest.mark.asyncio
-async def test_mod_actions_show_correct_buttons():
-    app = GenLauncherApp()
-    async with app.run_test(size=(120, 40)) as pilot:
-        await pilot.pause()
-
-        await pilot.press("a")
-        await pilot.pause(2)
-        await pilot.click("#add-mod-btn")
-        await pilot.pause()
-
-        await pilot.press("escape")
-        await pilot.pause()
-
-        # Select the row
-        await pilot.press("enter")
-        await pilot.pause()
-
-        # For an un-downloaded, un-installed mod: Download + Remove visible
-        download_btn = app.screen.query_one("#act-download")
-        remove_btn = app.screen.query_one("#act-remove")
-        install_btn = app.screen.query_one("#act-install")
+        # For an un-downloaded, un-installed mod at index 0:
+        # Download (dl-0) visible, Remove (rem-0) visible, Install (inst-0) hidden
+        download_btn = app.screen.query_one("#dl-0")
+        remove_btn = app.screen.query_one("#rem-0")
+        install_btn = app.screen.query_one("#inst-0")
+        assert download_btn is not None
+        assert remove_btn is not None
+        assert install_btn is not None
         assert download_btn.display is True
         assert remove_btn.display is True
         assert install_btn.display is False
@@ -457,18 +432,14 @@ async def test_remove_mod_from_list_via_action_button():
         await pilot.press("escape")
         await pilot.pause()
 
-        # Select the row
-        await pilot.press("enter")
-        await pilot.pause()
-
-        # Click Remove
-        await pilot.click("#act-remove")
+        # Click Remove button in the mod row
+        await pilot.click("#rem-0")
         await pilot.pause()
 
         remaining = app.mod_service.get_added_mods()
         assert len(remaining) == 0
-        table = app.screen.query_one("#mod-table")
-        assert len(table.rows) == 0
+        list_view = app.screen.query_one("#mod-list")
+        assert len(list_view.children) == 0
 
 
 @pytest.mark.asyncio
@@ -484,10 +455,8 @@ async def test_mod_action_keeps_home_screen():
 
         await pilot.press("escape")
         await pilot.pause()
-        await pilot.press("enter")
-        await pilot.pause()
 
-        await pilot.click("#act-remove")
+        await pilot.click("#rem-0")
         await pilot.pause()
 
         # Should still be on HomeScreen (no modal)
@@ -525,10 +494,14 @@ async def test_home_screen_has_key_hints():
 
 
 @pytest.mark.asyncio
-async def test_hint_text_hides_when_mod_selected():
+async def test_empty_label_hides_when_mods_present():
     app = GenLauncherApp()
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
+
+        # Initially empty, label should be visible
+        empty_label = app.screen.query_one("#empty-list-label")
+        assert empty_label.display is True
 
         await pilot.press("a")
         await pilot.pause(2)
@@ -538,9 +511,9 @@ async def test_hint_text_hides_when_mod_selected():
         await pilot.press("escape")
         await pilot.pause()
 
-        # First mod is auto-selected, hint should be hidden
-        hint = app.screen.query_one("#hint-text")
-        assert hint.display is False, "Hint should hide when first mod is auto-selected"
+        # After adding a mod, empty label should be hidden
+        empty_label = app.screen.query_one("#empty-list-label")
+        assert empty_label.display is False
 
 
 @pytest.mark.asyncio
@@ -615,7 +588,7 @@ async def test_credits_screen_has_footer():
 
 
 @pytest.mark.asyncio
-async def test_mod_action_panel_widget():
+async def test_inline_mod_buttons_exist():
     app = GenLauncherApp()
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
@@ -628,11 +601,12 @@ async def test_mod_action_panel_widget():
         await pilot.press("escape")
         await pilot.pause()
 
-        # First mod is auto-selected, action panel should be visible
-        from genlauncher_tui.widgets.action_panel import ModActionPanel
-        action_panel = app.screen.query_one("#mod-actions", ModActionPanel)
-        assert action_panel is not None
-        assert action_panel.display is True
+        # Verify all inline buttons exist for row 0
+        assert app.screen.query_one("#dl-0") is not None
+        assert app.screen.query_one("#inst-0") is not None
+        assert app.screen.query_one("#uninst-0") is not None
+        assert app.screen.query_one("#del-0") is not None
+        assert app.screen.query_one("#rem-0") is not None
 
 
 @pytest.mark.asyncio

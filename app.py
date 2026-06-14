@@ -53,7 +53,8 @@ class GenLauncherApp(App):
         self.push_screen("credits")
 
     def action_go_home(self) -> None:
-        self.pop_screen()
+        if len(self._screen_stack) > 1:
+            self.pop_screen()
 
     def action_launch_game(self) -> None:
         import webbrowser

@@ -22,7 +22,6 @@ class CreditsScreen(Screen):
             yield Label("  - Textualize (Textual framework)")
             yield Label("  - The C&C Generals modding community")
             yield Label("")
-            yield Label("Discord: https://discord.gg/FaVvdzQ")
         yield Button("Back", id="back-btn", variant="default")
         yield Footer()
 
