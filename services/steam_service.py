@@ -100,7 +100,8 @@ class SteamService:
 
     @staticmethod
     def get_mod_dir() -> str:
-        return os.path.join(SteamService.get_common_folder(), "GenLauncherMods")
+        data_home = os.environ.get("XDG_DATA_HOME", os.path.join(str(Path.home()), ".local", "share"))
+        return os.path.join(data_home, "genlauncher")
 
     @staticmethod
     def get_steam_userdata_dir() -> str:

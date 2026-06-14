@@ -15,16 +15,6 @@ def _mod_list_path() -> str:
         return os.path.join(tempfile.gettempdir(), ".genlauncher_test_modlist.json")
 
 
-@pytest.fixture(autouse=True)
-def clean_state():
-    path = _mod_list_path()
-    if os.path.isfile(path):
-        os.unlink(path)
-    yield
-    if os.path.isfile(path):
-        os.unlink(path)
-
-
 @pytest.mark.asyncio
 async def test_app_starts_on_home_screen():
     app = GenLauncherApp()
@@ -548,16 +538,9 @@ async def test_hint_text_hides_when_mod_selected():
         await pilot.press("escape")
         await pilot.pause()
 
-        # Hint should be visible before selection
+        # First mod is auto-selected, hint should be hidden
         hint = app.screen.query_one("#hint-text")
-        assert hint.display is True
-
-        # Select the row
-        await pilot.press("enter")
-        await pilot.pause()
-
-        # Hint should hide when mod is selected
-        assert hint.display is False, "Hint should hide when mod is selected"
+        assert hint.display is False, "Hint should hide when first mod is auto-selected"
 
 
 @pytest.mark.asyncio
@@ -645,15 +628,10 @@ async def test_mod_action_panel_widget():
         await pilot.press("escape")
         await pilot.pause()
 
-        # Before selection, action panel should be hidden
+        # First mod is auto-selected, action panel should be visible
         from genlauncher_tui.widgets.action_panel import ModActionPanel
         action_panel = app.screen.query_one("#mod-actions", ModActionPanel)
         assert action_panel is not None
-        assert action_panel.display is False
-
-        # Select the row
-        await pilot.press("enter")
-        await pilot.pause()
         assert action_panel.display is True
 
 

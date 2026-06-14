@@ -451,10 +451,15 @@ class TestModServiceInstall:
                     mb.downloaded = True
                     mb.downloaded_files = ["b.big"]
                     mb.mod_dir = mods_dir
+                    b_path = os.path.join(mods_dir, "b.big")
+                    with open(b_path, "w") as f:
+                        f.write("mod b")
 
                     svc.install_mod("Mod A", InstallMethod.CopyFiles)
-                    with pytest.raises(RuntimeError, match="already installed"):
-                        svc.install_mod("Mod B", InstallMethod.CopyFiles)
+                    assert ma.installed is True
+                    svc.install_mod("Mod B", InstallMethod.CopyFiles)
+                    assert ma.installed is False
+                    assert mb.installed is True
 
     def test_install_mod_mod_folder_missing(self):
         data = self._make_repo_data("Mod A")

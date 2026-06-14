@@ -88,46 +88,54 @@ class ModService:
 
     def _read_mod_list(self):
         path = self._modlist_path()
+        self._added_mods = []
         if os.path.isfile(path):
-            with open(path) as f:
-                raw = json.load(f)
-            self._added_mods = []
+            try:
+                with open(path) as f:
+                    raw = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                logger.warning("Corrupted mod list, starting fresh", exc_info=True)
+                self._write_mod_list()
+                return
             for entry in raw:
-                m = Mod(
-                    installed=entry.get("installed", False),
-                    installing=entry.get("installing", False),
-                    downloading=entry.get("downloading", False),
-                    downloaded=entry.get("downloaded", False),
-                    downloaded_version=entry.get("downloaded_version", ""),
-                    mod_dir=entry.get("mod_dir"),
-                    total_size=entry.get("total_size", 0),
-                    downloaded_files=entry.get("downloaded_files"),
-                )
-                mi = entry.get("mod_info")
-                if mi:
-                    from genlauncher_tui.models.repo import ModAddonsAndPatches
-                    m.mod_info = ModAddonsAndPatches(
-                        mod_id=mi.get("mod_id", 0),
-                        mod_name=mi.get("mod_name", ""),
-                        mod_link=mi.get("mod_link", ""),
-                        mod_patches=mi.get("mod_patches", []),
-                        mod_addons=mi.get("mod_addons", []),
+                try:
+                    m = Mod(
+                        installed=entry.get("installed", False),
+                        installing=entry.get("installing", False),
+                        downloading=entry.get("downloading", False),
+                        downloaded=entry.get("downloaded", False),
+                        downloaded_version=entry.get("downloaded_version", ""),
+                        mod_dir=entry.get("mod_dir"),
+                        total_size=entry.get("total_size", 0),
+                        downloaded_files=entry.get("downloaded_files"),
                     )
-                md = entry.get("mod_data")
-                if md:
-                    m.mod_data = ModData(
-                        name=md.get("name", ""),
-                        version=md.get("version", ""),
-                        simple_download_link=md.get("simple_download_link"),
-                        s3_host_link=md.get("s3_host_link"),
-                        s3_bucket_name=md.get("s3_bucket_name"),
-                        s3_folder_name=md.get("s3_folder_name"),
-                        s3_host_public_key=md.get("s3_host_public_key"),
-                        s3_host_secret_key=md.get("s3_host_secret_key"),
-                    )
-                self._added_mods.append(m)
+                    mi = entry.get("mod_info")
+                    if mi:
+                        from genlauncher_tui.models.repo import ModAddonsAndPatches
+                        m.mod_info = ModAddonsAndPatches(
+                            mod_id=mi.get("mod_id", 0),
+                            mod_name=mi.get("mod_name", ""),
+                            mod_link=mi.get("mod_link", ""),
+                            mod_patches=mi.get("mod_patches", []),
+                            mod_addons=mi.get("mod_addons", []),
+                        )
+                    md = entry.get("mod_data")
+                    if md:
+                        m.mod_data = ModData(
+                            name=md.get("name", ""),
+                            version=md.get("version", ""),
+                            simple_download_link=md.get("simple_download_link"),
+                            ui_image_source_link=md.get("ui_image_source_link"),
+                            s3_host_link=md.get("s3_host_link"),
+                            s3_bucket_name=md.get("s3_bucket_name"),
+                            s3_folder_name=md.get("s3_folder_name"),
+                            s3_host_public_key=md.get("s3_host_public_key"),
+                            s3_host_secret_key=md.get("s3_host_secret_key"),
+                        )
+                    self._added_mods.append(m)
+                except Exception:
+                    logger.exception("Skipping bad mod list entry")
         else:
-            self._added_mods = []
             self._write_mod_list()
 
     def _write_mod_list(self):
@@ -156,6 +164,7 @@ class ModService:
                     "name": m.mod_data.name,
                     "version": m.mod_data.version,
                     "simple_download_link": m.mod_data.simple_download_link,
+                    "ui_image_source_link": m.mod_data.ui_image_source_link,
                     "s3_host_link": m.mod_data.s3_host_link,
                     "s3_bucket_name": m.mod_data.s3_bucket_name,
                     "s3_folder_name": m.mod_data.s3_folder_name,
@@ -163,8 +172,11 @@ class ModService:
                     "s3_host_secret_key": m.mod_data.s3_host_secret_key,
                 }
             raw.append(entry)
-        with open(self._modlist_path(), "w") as f:
+        path = self._modlist_path()
+        tmp = path + ".tmp"
+        with open(tmp, "w") as f:
             json.dump(raw, f, indent=2)
+        os.replace(tmp, path)
 
     # --- Repo data ---
 
@@ -361,7 +373,7 @@ class ModService:
             downloaded=False,
         )
 
-    def install_mod(self, mod_name: str, install_method: InstallMethod):
+    def install_mod(self, mod_name: str, install_method: InstallMethod) -> str | None:
         mod = None
         for m in self._added_mods:
             if m.mod_info and m.mod_info.mod_name == mod_name:
@@ -370,8 +382,12 @@ class ModService:
         if not mod:
             raise ValueError(f"Mod not found: {mod_name}")
 
-        if any(m.installed and m.mod_info and m.mod_info.mod_name != mod_name for m in self._added_mods):
-            raise RuntimeError("Another mod is already installed. Uninstall it first.")
+        replaced: str | None = None
+        for m in self._added_mods:
+            if m.installed and m.mod_info and m.mod_info.mod_name != mod_name:
+                replaced = m.mod_info.mod_name
+                self.uninstall_mod(replaced)
+                break
 
         self._ensure_modded_launcher_installed(install_method)
         game_dir = SteamService.get_game_install_dir()
@@ -399,7 +415,7 @@ class ModService:
 
         mod.installed = True
         self._write_mod_list()
-        self._ensure_modded_launcher_installed(install_method)
+        return replaced
 
     def uninstall_mod(self, mod_name: str):
         mod = None

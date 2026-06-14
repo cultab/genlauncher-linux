@@ -57,6 +57,12 @@ Button {
     padding: 0 1;
 }
 
+#mod-thumbnail {
+    display: none;
+    height: 7;
+    margin: 0 1;
+}
+
 #mod-actions {
     display: none;
     margin: 1 0;
