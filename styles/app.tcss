@@ -2,108 +2,55 @@ Screen {
     background: $surface;
 }
 
-DataTable {
-    height: 1fr;
-    margin: 0 1;
-}
-
-DataTable > .datatable--header {
-    background: $primary 30%;
-    color: $text;
-    text-style: bold;
-}
-
 Button {
     margin: 1 1;
 }
 
-.action-panel {
-    width: 30;
-    min-width: 26;
-    padding: 1 1;
-    border-left: solid $primary;
-}
+/* === Toolbar === */
 
-.action-panel Button {
-    width: 100%;
-}
-
-.status-row {
+.toolbar {
+    dock: top;
     height: 3;
+    layout: horizontal;
+    align: center middle;
+    background: $primary 15%;
     padding: 0 1;
 }
 
-.status-label {
-    width: 20;
+.toolbar Button {
+    margin: 0 1;
+    min-width: 10;
+    height: 3;
 }
 
-.status-value {
+/* === Mod List === */
+
+.mod-list-panel {
     width: 1fr;
+    height: 1fr;
+    padding: 1 1;
 }
 
-.ok {
-    color: $success;
-}
-.fail {
-    color: $error;
-}
-
-#hint-text {
+#empty-list-label {
     height: 1;
-    dock: bottom;
     width: 1fr;
     color: $text-muted;
     text-style: italic;
     padding: 0 1;
 }
 
-#mod-thumbnail {
-    display: none;
-    height: 7;
-    margin: 0 1;
-}
-
-#mod-actions {
-    display: none;
-    margin: 1 0;
-    padding: 0 1;
-}
-
-#mod-actions Button {
-    width: 100%;
-    margin: 0 0 1 0;
-}
-
 #mod-list {
     height: 1fr;
 }
 
-#back-button {
-    dock: bottom;
-    width: 100%;
-}
-
-.main-container {
-    layout: horizontal;
-    height: 1fr;
-}
-
-.left-panel {
-    width: 1fr;
-    padding: 1 1;
-}
+/* === Right Panel === */
 
 .right-panel {
-    width: 34;
-    min-width: 30;
-    max-width: 38;
+    width: 24;
+    min-width: 22;
+    max-width: 28;
     padding: 1 1;
     border-left: solid $primary;
-}
-
-.right-panel Button {
-    width: 100%;
-    margin: 0 0 1 0;
 }
 
 .right-panel .separator {
@@ -142,21 +89,91 @@ Button {
     overflow: hidden;
 }
 
-OptionsScreen Input {
+/* === Mod Row === */
+
+ModRow {
+    layout: horizontal;
+    height: 7;
+    padding: 0 1;
+    align: center middle;
+}
+
+ModRow:hover {
+    background: $surface 50%;
+}
+
+.row-thumbnail {
+    width: 25%;
+    height: 7;
+    min-width: 10;
+    margin: 0 1 0 0;
+}
+
+.row-name {
+    width: 1fr;
+    height: 1;
+    text-style: bold;
+    padding: 0 1;
+}
+
+.row-version {
+    width: 10;
+    height: 1;
+    padding: 0 1;
+    text-align: center;
+}
+
+.row-status {
+    width: 14;
+    height: 1;
+    padding: 0 1;
+    text-align: center;
+}
+
+.row-size {
+    width: 10;
+    height: 1;
+    padding: 0 1;
+    text-align: right;
+}
+
+.row-buttons {
+    layout: horizontal;
+    height: 7;
+    align: center middle;
+    margin: 0 0 0 1;
+}
+
+.row-btn {
+    margin: 0 1;
+    min-width: 9;
+    height: 3;
+    padding: 0 2;
+}
+
+/* === Status Panel === */
+
+.status-row {
+    height: 3;
+    padding: 0 1;
+}
+
+.status-label {
+    width: 20;
+}
+
+.status-value {
     width: 1fr;
 }
 
-OptionsScreen RadioSet {
-    margin: 1 0;
+.ok {
+    color: $success;
+}
+.fail {
+    color: $error;
 }
 
-#credits-content {
-    padding: 2 4;
-}
-
-#credits-content Label {
-    margin: 1 0;
-}
+/* === Download Bar === */
 
 #download-bar {
     dock: bottom;
@@ -190,7 +207,28 @@ OptionsScreen RadioSet {
     margin: 0 2;
 }
 
-/* HelpScreen modal */
+/* === Options Screen === */
+
+OptionsScreen Input {
+    width: 1fr;
+}
+
+OptionsScreen RadioSet {
+    margin: 1 0;
+}
+
+/* === Credits Screen === */
+
+#credits-content {
+    padding: 2 4;
+}
+
+#credits-content Label {
+    margin: 1 0;
+}
+
+/* === Help Screen === */
+
 HelpScreen {
     align: center middle;
 }
@@ -236,4 +274,20 @@ HelpScreen {
     dock: bottom;
     width: 100%;
     margin-top: 1;
+}
+
+/* === Add Mod Screen === */
+
+#back-button {
+    dock: bottom;
+    width: 100%;
+}
+
+#mod-list-container {
+    height: 1fr;
+}
+
+.main-container {
+    layout: horizontal;
+    height: 1fr;
 }
