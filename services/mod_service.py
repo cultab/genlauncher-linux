@@ -280,6 +280,7 @@ class ModService:
                 os.path.relpath(f, mod_folder)
                 for f in get_all_files_recursively(mod_folder)
             ]
+            mod.downloaded_files = downloaded_files
 
         for mod_file in downloaded_files:
             name = fix_mod_filename(mod_file)
@@ -316,10 +317,19 @@ class ModService:
             name = fix_mod_filename(mod_file)
             game_path = os.path.join(game_dir, name)
             if not self._restore_original(mod_file):
-                if os.path.isfile(game_path):
+                if os.path.lexists(game_path):
                     os.unlink(game_path)
+
+        self._cleanup_infrastructure(game_dir)
         mod.installed = False
         self._store.dump(self._added_mods)
+
+    def _cleanup_infrastructure(self, game_dir: str):
+        for infra_file in ("Generals.exe", "d3d8.dll"):
+            path = os.path.join(game_dir, infra_file)
+            if not self._restore_original(infra_file):
+                if os.path.lexists(path):
+                    os.unlink(path)
 
     def delete_mod(self, mod_name: str):
         mod = None

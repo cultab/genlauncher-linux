@@ -2,6 +2,7 @@ import os
 import tempfile
 
 import pytest
+from textual.widgets import Button
 
 from genlauncher_tui.app import GenLauncherApp
 from genlauncher_tui.services.mod_utils import MODLIST_FILE
@@ -431,9 +432,11 @@ async def test_remove_mod_from_list_via_action_button():
 
         await pilot.press("escape")
         await pilot.pause()
+        await pilot.pause()
 
-        # Click Remove button in the mod row
-        await pilot.click("#rem-0")
+        # Use press() instead of pilot.click because Textual's ListView
+        # intercepts mouse clicks on child buttons, preventing Button.Pressed from firing.
+        app.screen.query_one("#rem-0", Button).press()
         await pilot.pause()
 
         remaining = app.mod_service.get_added_mods()
@@ -456,7 +459,7 @@ async def test_mod_action_keeps_home_screen():
         await pilot.press("escape")
         await pilot.pause()
 
-        await pilot.click("#rem-0")
+        app.screen.query_one("#rem-0", Button).press()
         await pilot.pause()
 
         # Should still be on HomeScreen (no modal)
