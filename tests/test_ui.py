@@ -623,3 +623,4 @@ async def test_status_panel_widget():
         assert sp.query_one("#gen-tool-status") is not None
         assert sp.query_one("#modded-launcher-status") is not None
         assert sp.query_one("#steam-path-label") is not None
+        assert sp.query_one("#install-gentool-btn") is not None

@@ -221,6 +221,16 @@ class HomeScreen(Screen):
             self.notify(f"Install failed: {e}", severity="error")
         self._refresh_mods()
 
+    async def _do_install_gentool(self):
+        opts = self.app.options_service.get_options()
+        try:
+            await self.app.mod_service.ensure_gentool_installed(opts.install_method)
+            self.notify("GenTool installed", severity="information")
+        except Exception as e:
+            logger.exception("GenTool install failed")
+            self.notify(f"GenTool install failed: {e}", severity="error")
+        self._refresh_status()
+
     def _do_uninstall(self, mod: Mod):
         name = mod.mod_info.mod_name if mod.mod_info else "?"
         try:
@@ -284,6 +294,8 @@ class HomeScreen(Screen):
             self.app.action_go_credits()
         elif btn_id == "exit-btn":
             self.app.exit()
+        elif btn_id == "install-gentool-btn":
+            asyncio.create_task(self._do_install_gentool())
         else:
             self._handle_mod_action(btn_id)
 

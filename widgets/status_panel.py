@@ -4,7 +4,7 @@ import logging
 import os
 
 from textual.app import ComposeResult
-from textual.widgets import Label, Static
+from textual.widgets import Button, Label, Static
 
 from genlauncher_tui.models.options import InstallationStatus
 from genlauncher_tui.services.steam_service import SteamService
@@ -19,6 +19,7 @@ class StatusPanel(Static):
         yield Label("", id="gen-tool-status")
         yield Label("", id="modded-launcher-status")
         yield Label("", id="steam-path-label")
+        yield Button("Install GenTool", id="install-gentool-btn", variant="primary")
 
     def refresh_status(self, status: InstallationStatus) -> None:
         gt = self.query_one("#gen-tool-status", Label)
@@ -26,6 +27,8 @@ class StatusPanel(Static):
         sp = self.query_one("#steam-path-label", Label)
         gt.update(f"GenTool: {'[green]● Installed[/]' if status.gen_tool else '[red]● Not installed[/]'}")
         ml.update(f"Modded Launcher: {'[green]● Installed[/]' if status.modded_launcher else '[red]● Not installed[/]'}")
+        btn = self.query_one("#install-gentool-btn", Button)
+        btn.display = not status.gen_tool
         try:
             path = SteamService.get_game_install_dir()
             home = os.path.expanduser("~")
